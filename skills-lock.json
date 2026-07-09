@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "skills": {
+    "banner-design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/banner-design/SKILL.md",
+      "computedHash": "f859a951ded1109a38bcc7f18faf4581f9adbf0550df7a11c013e77a5b229541"
+    },
+    "brand": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/brand/SKILL.md",
+      "computedHash": "bd65dbd8de679805d1ad740c74a41b4f831d08ff0240390a7ed2947c62a896b9"
+    },
+    "configurator": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-cca/skills/configurator/SKILL.md",
+      "computedHash": "fd543432ce4470ab00977a81bab8d033efa17b24f56f0246f99e548bbb7ffc25"
+    },
+    "copy-trade": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading-tools/skills/copy-trade/SKILL.md",
+      "computedHash": "28ff31e49da9375b06e4e1ac6709b9024f8109d3dbb19d2f886213dc8f6adedb"
+    },
+    "dca-bot": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading-tools/skills/dca-bot/SKILL.md",
+      "computedHash": "cf827c7ff483939a969c5091e47e4834db9694ac7c0365a1af2f14ddff066f74"
+    },
+    "deployer": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-cca/skills/deployer/SKILL.md",
+      "computedHash": "9d2e5981ad4b3b7361f0a733170c79b14766b6ef78f74286be03e7299fa0a9c7"
+    },
+    "design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design/SKILL.md",
+      "computedHash": "bb2e3ffee4b7b69e5a38ce08f6010ca79381d9f53b9dfadb33aee1ece6f1679a"
+    },
+    "design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design-system/SKILL.md",
+      "computedHash": "5a3dbae4a3c2ad9f96323d9bfae926b3c21bb1e3b066aa067906f577a2ff2545"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+    },
+    "index-bot": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading-tools/skills/index-bot/SKILL.md",
+      "computedHash": "011a91de255fe0ec5e0367789895fbf19edeffb331ecfce0a2a21959c93411a4"
+    },
+    "liquidity-planner": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-driver/skills/liquidity-planner/SKILL.md",
+      "computedHash": "623f8701e5db2fe57eade9cd0545c22ff762b81fd93913bf3ac314912f9fb5a2"
+    },
+    "lp-integration": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading/skills/lp-integration/SKILL.md",
+      "computedHash": "825f73e64b6a0e072da6757cf0d91ce1ac3e5c02767b12bdfde3698bc5b0d580"
+    },
+    "pay-with-any-token": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading/skills/pay-with-any-token/SKILL.md",
+      "computedHash": "8abb5d7025e51b56397d7867f69c629e680ce6ef3628ad641d92d783726c88e8"
+    },
+    "pay-with-app": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading/skills/pay-with-app/SKILL.md",
+      "computedHash": "446cdb12d42183c8d07b0635547c3a62cb07e6bb8d38c04aa865d97e67b2896c"
+    },
+    "slides": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/slides/SKILL.md",
+      "computedHash": "a2b3559b58afc484548e1eb359e20495d11cf12b90da7c1fbba50efed9a70340"
+    },
+    "swap-integration": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading/skills/swap-integration/SKILL.md",
+      "computedHash": "9a59d52261c8b0873285c120fc69a89abb6f590ec649471bbd09705def43a8df"
+    },
+    "swap-planner": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-driver/skills/swap-planner/SKILL.md",
+      "computedHash": "677eb6e3c6d77fa07c43fa61225319287df198d3765cf526ecf475e4df033771"
+    },
+    "ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-styling/SKILL.md",
+      "computedHash": "17112ca219efd89b7a25bab51c19a2a146188c34a3fee89384280768f66472cc"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "90739ddf380aa66d4fff7ba7767a0a6537a1e8287e5c5c408676e0a9e6b2c21d"
+    },
+    "v4-hook-generator": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-hooks/skills/v4-hook-generator/SKILL.md",
+      "computedHash": "5cf9923b8b2ba874ba83b08dd160f1065378a5077548d8c5d1b9d3a44d781fe6"
+    },
+    "v4-sdk-integration": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-trading/skills/v4-sdk-integration/SKILL.md",
+      "computedHash": "d33a0e23a44c1cacde38210a08ce6f67c394fb32ae6d8e2bd0227f9a0b449271"
+    },
+    "v4-security-foundations": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-hooks/skills/v4-security-foundations/SKILL.md",
+      "computedHash": "d8f2966c62325b7606285614050c8424354b5da1af6250df31cdd67cbb4ffde9"
+    },
+    "viem-integration": {
+      "source": "Uniswap/uniswap-ai",
+      "sourceType": "github",
+      "skillPath": "packages/plugins/uniswap-viem/skills/viem-integration/SKILL.md",
+      "computedHash": "e4ea9d2a01f56ef0e61381dcdd2cf756d9eeb7f9502f18a09be401012b5ad7cc"
+    }
+  }
+}
