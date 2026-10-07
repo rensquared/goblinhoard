@@ -9,6 +9,16 @@ export const metadata: Metadata = {
     title: "The Goblin Hoard ($HOARD) — Robinhood Chain",
     description: "Interactive 3D Goblin Cavern & Autonomous Raiding Swarm. Launched on ponsfamily.com.",
     type: "website",
+    images: ["/goblin-logo.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [
+      { url: "/icon.png", sizes: "192x192", type: "image/png" },
+    ],
   },
 };
 
