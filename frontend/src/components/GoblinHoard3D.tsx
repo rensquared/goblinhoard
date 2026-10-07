@@ -275,8 +275,8 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const pointerDownPos = useRef({ x: 0, y: 0 });
   const keysPressed = useRef<{ [key: string]: boolean }>({});
 
-  // Migration Milestone Configuration (Bonding curve graduation on ponsfamily at $70.0K Market Cap)
-  const MIGRATION_TARGET = 70000;
+  // Migration Milestone Configuration (Bonding curve graduation on ponsfamily at $40.0K Market Cap)
+  const MIGRATION_TARGET = 40000;
   const [isForceMigrated, setIsForceMigrated] = useState<boolean | null>(null);
 
   // Determine Current World Tier based on Market Cap (Initial launch on ponsfamily at ~$4.7K)
@@ -289,7 +289,10 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
   // Active migration state: toggled manually or automatically achieved at $40K Market Cap
   const isMigrated = isForceMigrated !== null ? isForceMigrated : marketCap >= MIGRATION_TARGET;
-  const migrationProgressPct = Math.min(100, Math.max(0, (marketCap / MIGRATION_TARGET) * 100));
+  const migrationProgressPct = Math.min(
+    100,
+    Math.max(0, ((marketCap - 4700) / (MIGRATION_TARGET - 4700)) * 100)
+  );
 
   const ASCENSION_MILESTONES = [
     { tier: 0, label: "T0", name: "Genesis", mcap: 4700, display: "$4.7K" },
@@ -3587,9 +3590,55 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     </span>
                   </div>
                 </div>
-                <span className="px-2.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold text-xs tracking-wider uppercase">
-                  $HOARD
-                </span>
+
+                <div className="flex items-center gap-2">
+                  {/* On Mobile (< sm): Compact Utility Strip directly in Header so it NEVER overlaps */}
+                  <div className="flex sm:hidden items-center gap-1.5 p-1 rounded-md bg-white/[0.04] border border-white/10 text-xs">
+                    <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
+                      <span className="text-[8.5px] bg-white/5 px-1 py-0.2 rounded border border-white/10 font-bold">CA</span>
+                      <span className="text-[9px] text-zinc-400">soon</span>
+                      <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors p-0.5">
+                        {copiedCA ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-zinc-500" />}
+                      </button>
+                    </div>
+
+                    <div className="w-px h-3 bg-white/10" />
+
+                    <a
+                      href="https://x.com/hoardedfun"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-zinc-400 hover:text-white font-bold text-xs p-0.5"
+                      title="Twitter / X (@hoardedfun)"
+                    >
+                      𝕏
+                    </a>
+
+                    <a
+                      href="https://t.me/hoardedfun"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-zinc-400 hover:text-[#229ED9] p-0.5"
+                      title="Telegram (@hoardedfun)"
+                    >
+                      <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.943z"/>
+                      </svg>
+                    </a>
+
+                    <button
+                      onClick={toggleAudio}
+                      className={`p-0.5 transition-colors ${audioEnabled ? "text-amber-400" : "text-zinc-500"}`}
+                      title={audioEnabled ? "Mute ambient audio" : "Play ambient audio"}
+                    >
+                      {audioEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
+                    </button>
+                  </div>
+
+                  <span className="px-2.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold text-xs tracking-wider uppercase">
+                    $HOARD
+                  </span>
+                </div>
               </div>
 
               {/* Dynamic Phase: Pre-Migration vs Warband is Out */}
@@ -3610,7 +3659,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <div className="relative w-full h-1 bg-white/10 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-amber-500 transition-all duration-500"
-                      style={{ width: `${Math.max(3, migrationProgressPct)}%` }}
+                      style={{ width: `${migrationProgressPct}%` }}
                     />
                   </div>
 
@@ -4343,7 +4392,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-amber-500 to-purple-500 transition-all duration-500"
-                  style={{ width: `${Math.max(1.5, currentMilestoneProgress)}%` }}
+                  style={{ width: `${currentMilestoneProgress}%` }}
                 />
               </div>
 
@@ -4650,12 +4699,12 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             </div>
           )}
 
-          {/* 8. UTILITY BAR (Top right on mobile < sm, bottom right on desktop) */}
-          <div className="absolute top-4 sm:top-auto sm:bottom-4 right-4 z-30 pointer-events-auto flex items-center gap-2">
-            <div className="rounded-lg glass-panel px-2.5 sm:px-3 py-1.5 flex items-center gap-2 sm:gap-2.5 font-sans text-xs shadow-xl">
-              <div className="flex items-center gap-1.5 text-zinc-400 text-[10.5px] sm:text-[11px]">
+          {/* 8. DESKTOP UTILITY BAR (Bottom right on desktop; hidden on mobile since integrated in header) */}
+          <div className="hidden sm:flex absolute bottom-4 right-4 z-30 pointer-events-auto items-center gap-2">
+            <div className="rounded-lg glass-panel px-3 py-1.5 flex items-center gap-2.5 font-sans text-xs shadow-xl">
+              <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
                 <span className="text-[9px] font-mono text-zinc-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 font-bold">CA</span>
-                <span className="text-zinc-400 font-mono text-[9.5px] sm:text-[10px]">launching soon</span>
+                <span className="text-zinc-400 font-mono text-[10px]">launching soon</span>
                 <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors ml-0.5 p-1">
                   {copiedCA ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
                 </button>
