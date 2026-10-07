@@ -3641,33 +3641,35 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 </div>
               )}
 
-              {/* Mobile Drawer Toggles (only visible on mobile screens < md) */}
-              <div className="flex md:hidden items-center gap-2 pt-1.5 border-t border-white/[0.06] text-xs">
+              {/* Mobile Drawer Toggles (prominent, touch-friendly bar on mobile) */}
+              <div className="flex md:hidden items-center gap-2 pt-2 border-t border-white/[0.08] text-xs">
                 <button
                   onClick={() => setMobileDrawer((p) => (p === "feed" ? "none" : "feed"))}
-                  className={`flex-1 py-1 rounded text-center font-mono font-semibold text-[10px] uppercase transition-colors border ${
+                  className={`flex-1 py-1.5 px-2 rounded-md text-center font-mono font-bold text-[11px] uppercase transition-all border flex items-center justify-center gap-1.5 min-h-[36px] ${
                     mobileDrawer === "feed"
-                      ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                      : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
+                      ? "bg-amber-500/25 text-amber-300 border-amber-500/50 shadow-sm"
+                      : "bg-white/5 text-zinc-300 border-white/10 active:bg-white/10"
                   }`}
                 >
-                  📜 {mobileDrawer === "feed" ? "Close Feed" : "Live Feed"}
+                  <span>📜</span>
+                  <span>{mobileDrawer === "feed" ? "Hide Feed" : "Live Feed"}</span>
                 </button>
                 <button
                   onClick={() => setMobileDrawer((p) => (p === "settlement" ? "none" : "settlement"))}
-                  className={`flex-1 py-1 rounded text-center font-mono font-semibold text-[10px] uppercase transition-colors border ${
+                  className={`flex-1 py-1.5 px-2 rounded-md text-center font-mono font-bold text-[11px] uppercase transition-all border flex items-center justify-center gap-1.5 min-h-[36px] ${
                     mobileDrawer === "settlement"
-                      ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                      : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
+                      ? "bg-amber-500/25 text-amber-300 border-amber-500/50 shadow-sm"
+                      : "bg-white/5 text-zinc-300 border-white/10 active:bg-white/10"
                   }`}
                 >
-                  ⚔️ {mobileDrawer === "settlement" ? "Close Camp" : "Camp / Mind"}
+                  <span>⚔️</span>
+                  <span>{mobileDrawer === "settlement" ? "Hide Camp" : "Camp / Mind"}</span>
                 </button>
               </div>
             </div>
 
             {/* Card 2: LIVE FROM THE HOARD Feed (Desktop always visible, mobile toggleable) */}
-            <div className={`w-[calc(100vw-2rem)] sm:w-[360px] max-h-[480px] rounded-lg glass-panel p-3.5 flex-col gap-2.5 ${
+            <div className={`w-[calc(100vw-2rem)] sm:w-[360px] max-h-[50vh] sm:max-h-[480px] rounded-lg glass-panel p-3.5 flex-col gap-2.5 shadow-2xl ${
               mobileDrawer === "feed" ? "flex" : "hidden md:flex"
             }`}>
               <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.06]">
@@ -3679,12 +3681,12 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 </div>
 
                 {/* Filter Tabs Strip */}
-                <div className="flex items-center gap-2 text-[10px] font-mono">
+                <div className="flex items-center gap-2 text-[10px] font-mono overflow-x-auto no-scrollbar py-0.5">
                   {(["all", "goblins", "raids", "burns", "traders"] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveFeedTab(tab)}
-                      className={`uppercase tracking-wider transition-colors pb-0.5 ${
+                      className={`uppercase tracking-wider transition-colors pb-0.5 whitespace-nowrap ${
                         activeFeedTab === tab
                           ? "text-amber-300 font-bold border-b border-amber-400"
                           : "text-zinc-500 hover:text-zinc-300 border-b border-transparent"
@@ -3697,7 +3699,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               </div>
 
               {/* Feed Entries: Terminal Event Readout */}
-              <div className="overflow-y-auto max-h-[340px] pr-0.5 flex flex-col">
+              <div className="overflow-y-auto max-h-[38vh] sm:max-h-[340px] pr-0.5 flex flex-col">
                 {filteredFeed.map((item) => (
                   <div
                     key={item.id}
@@ -3742,9 +3744,9 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             </div>
           </div>
 
-          {/* 2. TOP RIGHT: UNIFIED COMMAND READOUT */}
-          <div className="absolute top-4 right-4 z-30 pointer-events-auto font-sans">
-            <div className="rounded-lg glass-panel px-4 py-2 flex items-center gap-4">
+          {/* 2. TOP RIGHT: UNIFIED COMMAND READOUT (Desktop/Tablet; hidden on xs mobile to prevent collision with logo card) */}
+          <div className="hidden sm:block absolute top-4 right-4 z-30 pointer-events-auto font-sans">
+            <div className="rounded-lg glass-panel px-4 py-2 flex items-center gap-4 shadow-xl">
               {/* MARKET CAP */}
               <div className="flex flex-col">
                 <span className="text-[9.5px] uppercase tracking-[0.1em] text-zinc-400 font-semibold leading-none">
@@ -3821,7 +3823,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
           </div>
 
           {/* 4. RIGHT PANEL: GOBLIN INSPECTION DRAWER OR SETTLEMENT TABS */}
-          <div className={`absolute top-[80px] right-4 z-30 pointer-events-auto ${
+          <div className={`fixed sm:absolute top-16 sm:top-[80px] right-4 left-4 sm:left-auto z-40 sm:z-30 pointer-events-auto ${
             selectedGoblin || mobileDrawer === "settlement" ? "block" : "hidden md:block"
           }`}>
             {selectedGoblin ? (
@@ -4038,12 +4040,12 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               </div>
             ) : (
               /* SETTLEMENT TABS (Chieftain, Mind, Dungeons) */
-              <div className="w-[340px] rounded-lg glass-panel p-3.5 flex flex-col gap-2.5 font-sans">
+              <div className="w-full sm:w-[340px] max-h-[75vh] sm:max-h-[80vh] overflow-y-auto rounded-lg glass-panel p-3.5 flex flex-col gap-2.5 font-sans shadow-2xl">
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
-                  <div className="flex items-center gap-1 text-[11px] p-0.5 rounded bg-black/40 border border-white/[0.06]">
+                  <div className="flex items-center gap-1 text-[11px] p-0.5 rounded bg-black/40 border border-white/[0.06] overflow-x-auto no-scrollbar">
                     <button
                       onClick={() => setActiveRightTab("chieftain")}
-                      className={`px-2 py-1 rounded transition-colors font-bold flex items-center gap-1.5 ${
+                      className={`px-2 py-1 rounded transition-colors font-bold flex items-center gap-1.5 whitespace-nowrap ${
                         activeRightTab === "chieftain"
                           ? "bg-white/10 text-zinc-100"
                           : "text-zinc-400 hover:text-zinc-200"
@@ -4054,7 +4056,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     </button>
                     <button
                       onClick={() => setActiveRightTab("hivemind")}
-                      className={`px-2 py-1 rounded transition-colors font-bold flex items-center gap-1.5 ${
+                      className={`px-2 py-1 rounded transition-colors font-bold flex items-center gap-1.5 whitespace-nowrap ${
                         activeRightTab === "hivemind"
                           ? "bg-white/10 text-zinc-100"
                           : "text-zinc-400 hover:text-zinc-200"
@@ -4065,7 +4067,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     </button>
                     <button
                       onClick={() => setActiveRightTab("dungeons")}
-                      className={`px-2 py-1 rounded transition-colors font-bold flex items-center gap-1.5 ${
+                      className={`px-2 py-1 rounded transition-colors font-bold flex items-center gap-1.5 whitespace-nowrap ${
                         activeRightTab === "dungeons"
                           ? "bg-white/10 text-zinc-100"
                           : "text-zinc-400 hover:text-zinc-200"
@@ -4076,13 +4078,23 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     </button>
                   </div>
 
-                  <button
-                    onClick={() => applyPreset("chieftain")}
-                    title="Focus Camera on High Chieftain"
-                    className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-zinc-200 flex items-center justify-center transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => applyPreset("chieftain")}
+                      title="Focus Camera on High Chieftain"
+                      className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-zinc-200 flex items-center justify-center transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    {/* Mobile close button */}
+                    <button
+                      onClick={() => setMobileDrawer("none")}
+                      className="sm:hidden w-7 h-7 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-zinc-200 flex items-center justify-center transition-colors"
+                      title="Close panel"
+                    >
+                      <CloseIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* TAB 1: THE HIGH CHIEFTAIN */}
@@ -4253,29 +4265,29 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             )}
           </div>
           {/* 5. THE ASCENSION ROADMAP & TIER PROGRESSION */}
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-[94%] max-w-[580px]">
-            <div className="rounded-lg glass-panel px-3.5 py-2 flex flex-col gap-1.5 font-sans">
+          <div className="absolute bottom-16 sm:bottom-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-[calc(100vw-1.5rem)] sm:w-[94%] max-w-[580px]">
+            <div className="rounded-lg glass-panel px-2.5 sm:px-3.5 py-1.5 sm:py-2 flex flex-col gap-1 sm:gap-1.5 font-sans shadow-xl">
               {/* Header: Title + Active Milestone Target */}
               <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-zinc-200">
-                  <Crown className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="tracking-[0.08em] uppercase text-[11px]">THE ASCENSION</span>
-                  <span className="text-[9.5px] font-mono text-zinc-400 ml-1">
+                <div className="flex items-center gap-1 sm:gap-1.5 font-bold text-zinc-200">
+                  <Crown className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-purple-400" />
+                  <span className="tracking-[0.08em] uppercase text-[10px] sm:text-[11px]">THE ASCENSION</span>
+                  <span className="text-[8.5px] sm:text-[9.5px] font-mono text-zinc-400 ml-0.5 sm:ml-1">
                     Target: {nextMilestone.name} ({nextMilestone.display})
                   </span>
                 </div>
-                <div className="text-zinc-200 font-mono text-xs flex items-center gap-1 tabular-nums">
+                <div className="text-zinc-200 font-mono text-[11px] sm:text-xs flex items-center gap-1 tabular-nums">
                   <span className="font-bold">${marketCap >= 1000 ? `${(marketCap / 1000).toFixed(1)}K` : marketCap.toFixed(0)}</span>
                   <span className="text-zinc-600">/</span>
                   <span className="text-amber-300 font-bold">{nextMilestone.display}</span>
-                  <span className="text-[10px] text-zinc-500 font-sans ml-0.5">
-                    ({currentMilestoneProgress.toFixed(1)}%)
+                  <span className="text-[9px] sm:text-[10px] text-zinc-500 font-sans ml-0.5">
+                    ({currentMilestoneProgress.toFixed(0)}%)
                   </span>
                 </div>
               </div>
 
               {/* T0 > T1 > T2 > T3 > Final Ascension Stepper */}
-              <div className="flex items-center justify-between gap-1 relative my-0.5">
+              <div className="flex items-center justify-between gap-0.5 sm:gap-1 relative my-0.5 overflow-x-auto no-scrollbar py-0.5">
                 {ASCENSION_MILESTONES.map((m, idx) => {
                   const isPassed = marketCap >= m.mcap && (idx === 0 || marketCap >= m.mcap);
                   const isTarget = nextMilestone.tier === m.tier;
@@ -4285,7 +4297,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       {/* Milestone Node */}
                       <div
                         title={`${m.name} (${m.display})`}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-mono font-semibold border ${
+                        className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[8.5px] sm:text-[9.5px] font-mono font-semibold border flex-shrink-0 ${
                           isPassed && !isTarget
                             ? "bg-white/[0.04] text-zinc-300 border-white/10"
                             : isTarget
@@ -4293,18 +4305,18 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                             : "bg-white/[0.02] text-zinc-500 border-white/[0.04]"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${
+                        <span className={`w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full flex-shrink-0 ${
                           isPassed && !isTarget ? "bg-amber-400" : isTarget ? "bg-purple-400" : "bg-zinc-700"
                         }`} />
                         <span className="font-bold">{m.label}</span>
-                        <span className={`text-[8.5px] ${isTarget ? "text-purple-300 font-bold" : "text-zinc-500"}`}>
+                        <span className={`text-[7.5px] sm:text-[8.5px] ${isTarget ? "text-purple-300 font-bold" : "text-zinc-500"}`}>
                           {m.display}
                         </span>
                       </div>
 
                       {/* Connector arrow / line between milestones */}
                       {idx < ASCENSION_MILESTONES.length - 1 && (
-                        <div className="flex-1 flex items-center justify-center px-0.5">
+                        <div className="flex-1 flex items-center justify-center px-0.5 min-w-[8px]">
                           <div className="w-full h-px bg-white/10 rounded-full relative overflow-hidden">
                             <div
                               className="h-full bg-amber-500/80 transition-all duration-500"
@@ -4317,7 +4329,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                               }}
                             />
                           </div>
-                          <span className={`text-[9px] font-bold mx-0.5 ${idx < currentTier ? "text-amber-400" : "text-zinc-700"}`}>
+                          <span className={`text-[8px] sm:text-[9px] font-bold mx-0.5 ${idx < currentTier ? "text-amber-400" : "text-zinc-700"}`}>
                             &gt;
                           </span>
                         </div>
@@ -4336,21 +4348,21 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               </div>
 
               {/* Contextual Step Subtitle */}
-              <div className="text-[9.5px] text-zinc-400 text-center truncate">
+              <div className="text-[8.5px] sm:text-[9.5px] text-zinc-400 text-center truncate">
                 {currentTier === 0
-                  ? "At $15.0K Market Cap: Warband gathers, Chieftain Keep fortified & Crypt of the Memes unsealed"
+                  ? "At $12.0K Market Cap: Warband gathers, Chieftain Keep fortified & Crypt unsealed"
                   : currentTier === 1
-                  ? "At $35.0K Market Cap: Castle expands, Goblin Mine opens & Dragon's Chasm awakens"
+                  ? "At $25.0K Market Cap: Castle expands & Dragon's Chasm awakens"
                   : currentTier === 2
-                  ? "At $70.0K Market Cap: Bonding Curve Graduates & Migrates to DEX — Full Warband Unleashed"
-                  : "At $250.0K Market Cap: The Citadel Ascends — Golden Realm & Legendary Status"}
+                  ? "At $40.0K Market Cap: Bonding Curve Graduates & Migrates to DEX — Full Warband Unleashed"
+                  : "At $100.0K Market Cap: The Citadel Ascends — Golden Realm & Legendary Status"}
               </div>
             </div>
           </div>
 
           {/* 6. BOTTOM CENTER: NAVIGATION DOCK */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-            <div className="rounded-lg glass-panel px-2 py-1.5 flex items-center gap-1 font-sans text-xs">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-[calc(100vw-1rem)]">
+            <div className="rounded-lg glass-panel px-2 py-1 flex items-center gap-1 font-sans text-xs overflow-x-auto no-scrollbar shadow-xl">
               <button
                 onClick={() => {
                   setNavMode("orbit");
@@ -4359,7 +4371,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   sphericalRef.current.phi = 1.22;
                   lookTargetRef.current.set(0, 0.8, -0.4);
                 }}
-                className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition-colors text-xs font-semibold ${
+                className={`px-2 py-1 rounded flex items-center gap-1 transition-colors text-xs font-semibold whitespace-nowrap ${
                   navMode === "orbit"
                     ? "bg-white/10 text-white font-bold"
                     : "text-zinc-400 hover:text-white"
@@ -4371,7 +4383,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
               <button
                 onClick={() => setNavMode("fly")}
-                className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition-colors text-xs font-semibold ${
+                className={`px-2 py-1 rounded flex items-center gap-1 transition-colors text-xs font-semibold whitespace-nowrap ${
                   navMode === "fly"
                     ? "bg-white/10 text-white font-bold"
                     : "text-zinc-400 hover:text-white"
@@ -4388,7 +4400,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     followRandomGoblin();
                   }
                 }}
-                className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition-colors text-xs font-semibold ${
+                className={`px-2 py-1 rounded flex items-center gap-1 transition-colors text-xs font-semibold whitespace-nowrap ${
                   navMode === "follow"
                     ? "bg-white/10 text-white font-bold"
                     : "text-zinc-400 hover:text-white"
@@ -4401,18 +4413,18 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <button
                 onClick={() => followRandomGoblin()}
                 title="Follow Random Raider (Key: R)"
-                className="px-2.5 py-1 rounded flex items-center gap-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-xs font-medium font-mono"
+                className="px-2 py-1 rounded flex items-center gap-1 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-xs font-medium font-mono whitespace-nowrap"
               >
                 <Dices className="w-3.5 h-3.5 text-amber-400" />
                 <span>Raider (R)</span>
               </button>
 
-              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              <div className="w-px h-4 bg-white/10 mx-0.5 flex-shrink-0" />
 
               <button
                 onClick={() => applyPreset("camp")}
                 title="Campfire Pyre"
-                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors flex-shrink-0"
               >
                 <Flame className="w-3.5 h-3.5 text-amber-400" />
               </button>
@@ -4420,7 +4432,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <button
                 onClick={() => applyPreset("chieftain")}
                 title="High Chieftain Vigil"
-                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors flex-shrink-0"
               >
                 <Crown className="w-3.5 h-3.5 text-amber-300" />
               </button>
@@ -4428,7 +4440,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <button
                 onClick={() => applyPreset("fortress")}
                 title="Chieftain's Fortress Citadel"
-                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors flex-shrink-0"
               >
                 <Shield className="w-3.5 h-3.5 text-zinc-400" />
               </button>
@@ -4436,17 +4448,17 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <button
                 onClick={() => applyPreset("overview")}
                 title="Camp Overview"
-                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-zinc-200 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded hover:bg-white/10 text-zinc-400 hover:text-zinc-200 flex items-center justify-center transition-colors flex-shrink-0"
               >
                 <MapIcon className="w-3.5 h-3.5 text-zinc-400" />
               </button>
 
-              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              <div className="w-px h-4 bg-white/10 mx-0.5 flex-shrink-0" />
 
               <button
                 onClick={() => applyPreset("crypt")}
                 title="Crypt of the Memes (Tier 1+)"
-                className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                className={`w-6 h-6 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
                   currentTier >= 1
                     ? "hover:bg-white/10 text-purple-400 hover:text-purple-200"
                     : "text-zinc-700 opacity-40 cursor-not-allowed"
@@ -4458,7 +4470,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <button
                 onClick={() => applyPreset("chasm")}
                 title="Dragon's Chasm (Tier 2+)"
-                className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                className={`w-6 h-6 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
                   currentTier >= 2
                     ? "hover:bg-white/10 text-rose-400 hover:text-rose-200"
                     : "text-zinc-700 opacity-40 cursor-not-allowed"
@@ -4470,7 +4482,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               <button
                 onClick={() => applyPreset("voidmine")}
                 title="Void Mine (Tier 3+)"
-                className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                className={`w-6 h-6 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
                   currentTier >= 3
                     ? "hover:bg-white/10 text-cyan-400 hover:text-cyan-200"
                     : "text-zinc-700 opacity-40 cursor-not-allowed"
@@ -4479,11 +4491,11 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 <Gem className="w-3.5 h-3.5" />
               </button>
 
-              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              <div className="w-px h-4 bg-white/10 mx-0.5 flex-shrink-0" />
 
               <button
                 onClick={() => setShowRoster((p) => !p)}
-                className="px-2.5 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 transition-colors text-xs font-mono"
+                className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-zinc-300 hover:text-white font-medium flex items-center gap-1 transition-colors text-xs font-mono whitespace-nowrap flex-shrink-0"
               >
                 <Users className="w-3.5 h-3.5" />
                 <span>Horde ({goblinCount})</span>
@@ -4638,13 +4650,13 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             </div>
           )}
 
-          {/* 8. BOTTOM RIGHT: UTILITY BAR */}
-          <div className="absolute bottom-4 right-4 z-30 pointer-events-auto flex items-center gap-2">
-            <div className="rounded-lg glass-panel px-3 py-1.5 flex items-center gap-2.5 font-sans text-xs">
-              <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
+          {/* 8. UTILITY BAR (Top right on mobile < sm, bottom right on desktop) */}
+          <div className="absolute top-4 sm:top-auto sm:bottom-4 right-4 z-30 pointer-events-auto flex items-center gap-2">
+            <div className="rounded-lg glass-panel px-2.5 sm:px-3 py-1.5 flex items-center gap-2 sm:gap-2.5 font-sans text-xs shadow-xl">
+              <div className="flex items-center gap-1.5 text-zinc-400 text-[10.5px] sm:text-[11px]">
                 <span className="text-[9px] font-mono text-zinc-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 font-bold">CA</span>
-                <span className="text-zinc-400 font-mono text-[10px]">launching soon</span>
-                <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors ml-0.5">
+                <span className="text-zinc-400 font-mono text-[9.5px] sm:text-[10px]">launching soon</span>
+                <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors ml-0.5 p-1">
                   {copiedCA ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
                 </button>
               </div>
@@ -4655,7 +4667,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 href="https://x.com/hoardedfun"
                 target="_blank"
                 rel="noreferrer"
-                className="text-zinc-400 hover:text-white font-bold text-xs transition-colors flex items-center gap-1"
+                className="text-zinc-400 hover:text-white font-bold text-xs transition-colors flex items-center gap-1 p-1"
                 title="Twitter / X (@hoardedfun)"
               >
                 𝕏
@@ -4665,7 +4677,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 href="https://t.me/hoardedfun"
                 target="_blank"
                 rel="noreferrer"
-                className="text-zinc-400 hover:text-[#229ED9] transition-colors flex items-center gap-1"
+                className="text-zinc-400 hover:text-[#229ED9] transition-colors flex items-center gap-1 p-1"
                 title="Telegram (@hoardedfun)"
               >
                 <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -4675,7 +4687,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
               <button
                 onClick={toggleAudio}
-                className={`transition-colors ${audioEnabled ? "text-amber-400" : "text-zinc-500 hover:text-zinc-300"}`}
+                className={`transition-colors p-1 ${audioEnabled ? "text-amber-400" : "text-zinc-500 hover:text-zinc-300"}`}
                 title={audioEnabled ? "Mute ambient audio" : "Play ambient audio"}
               >
                 {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
@@ -4683,7 +4695,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
               <button
                 onClick={() => setIsDayMode((p) => !p)}
-                className="text-zinc-400 hover:text-amber-400 transition-colors"
+                className="text-zinc-400 hover:text-amber-400 transition-colors p-1"
                 title="Toggle day/night lighting"
               >
                 {isDayMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
@@ -4697,7 +4709,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     document.exitFullscreen();
                   }
                 }}
-                className="text-zinc-400 hover:text-white transition-colors"
+                className="text-zinc-400 hover:text-white transition-colors hidden sm:block p-1"
                 title="Fullscreen"
               >
                 <Maximize className="w-3.5 h-3.5" />
