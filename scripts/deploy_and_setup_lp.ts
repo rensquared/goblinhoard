@@ -30,7 +30,7 @@ async function getPermitSignature(
     ],
   };
 
-  // We query the nonce from the contract
+  // Fetch token nonce directly on-chain
   const tokenContract = await hre.ethers.getContractAt("OutlawToken", tokenAddress);
   const nonce = await tokenContract.nonces(wallet.address);
 
@@ -42,10 +42,11 @@ async function getPermitSignature(
     deadline: deadline,
   };
 
-  const sigString = await wallet.signTypedData(domain, types, message);
-  return ethers.Signature.from(sigString);
+  const signature = await wallet.signTypedData(domain, types, message);
+  return ethers.Signature.from(signature);
 }
 
+// Tick to SqrtPriceX96 calculator (from Uniswap SDK math)
 function getSqrtPriceX96ForTick(tick: number): bigint {
   const ratio = Math.pow(1.0001, tick / 2);
   const q96 = BigInt(2) ** BigInt(96);
@@ -68,11 +69,89 @@ async function main() {
   const rewardAddresses = wallets.reward.map((w: any) => w.address);
   const founderAddresses = wallets.founder.map((w: any) => w.address);
 
-  // 2. Deploy OutlawToken
-  console.log("Deploying OutlawToken...");
+  let deployNonce = await hre.ethers.provider.getTransactionCount(deployer.address, "pending");
+
+  async function getGasFees() {
+    const feeData = await hre.ethers.provider.getFeeData();
+    // 2.5x base fee for safety, 2x priority fee to guarantee inclusion
+    const maxFeePerGas = (feeData.maxFeePerGas || 0n) * 25n / 10n;
+    const maxPriorityFeePerGas = (feeData.maxPriorityFeePerGas || 0n) * 20n / 10n;
+    return { maxFeePerGas, maxPriorityFeePerGas };
+  }
+
+  // Nonce & Gas Fee Resilient Helper functions
+  async function deployContract(factory: any, ...args: any[]): Promise<any> {
+    let sent = false;
+    let retries = 0;
+    while (!sent && retries < 10) {
+      try {
+        const fees = await getGasFees();
+        const contract = await factory.deploy(...args, { 
+          nonce: deployNonce,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas
+        });
+        await contract.waitForDeployment();
+        deployNonce++;
+        sent = true;
+        return contract;
+      } catch (error: any) {
+        if (error.message.includes("nonce too low")) {
+          deployNonce++;
+          retries++;
+          console.log(`  Nonce too low. Retrying deploy with nonce: ${deployNonce}...`);
+        } else if (error.message.includes("max fee per gas less than block base fee")) {
+          retries++;
+          console.log(`  Gas fee spike during deploy. Retrying...`);
+        } else {
+          retries++;
+          console.log(`  Network/RPC error during deploy: ${error.message}. Retrying in 3 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+    }
+    throw new Error("Failed to deploy contract after max retries");
+  }
+
+  async function sendTx(txFunc: (nonce: number, maxFee: bigint, maxPriority: bigint) => Promise<any>): Promise<any> {
+    let sent = false;
+    let retries = 0;
+    while (!sent && retries < 10) {
+      try {
+        const fees = await getGasFees();
+        const tx = await txFunc(deployNonce, fees.maxFeePerGas, fees.maxPriorityFeePerGas);
+        await tx.wait();
+        deployNonce++;
+        sent = true;
+        return tx;
+      } catch (error: any) {
+        if (error.message.includes("nonce too low")) {
+          deployNonce++;
+          retries++;
+          console.log(`  Nonce too low. Retrying transaction with nonce: ${deployNonce}...`);
+        } else if (error.message.includes("max fee per gas less than block base fee")) {
+          retries++;
+          console.log(`  Gas base fee spiked. Retrying transaction with new gas fee...`);
+        } else {
+          retries++;
+          console.log(`  Network/RPC timeout error: ${error.message}. Retrying in 3 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+    }
+    throw new Error("Failed to execute transaction after max retries");
+  }
+
+  // 2. Deploy OutlawToken (custom branded)
+  const tokenNameEnv = process.env.TOKEN_NAME || "";
+  const tokenSymbolEnv = process.env.TOKEN_SYMBOL || "";
+  if (!tokenNameEnv || !tokenSymbolEnv) {
+    throw new Error("TOKEN_NAME and TOKEN_SYMBOL must be configured in .env file!");
+  }
+  
+  console.log(`Deploying OutlawToken with Name: "${tokenNameEnv}" | Symbol: "${tokenSymbolEnv}"...`);
   const OutlawToken = await hre.ethers.getContractFactory("OutlawToken");
-  const token = await OutlawToken.deploy();
-  await token.waitForDeployment();
+  const token = await deployContract(OutlawToken, tokenNameEnv, tokenSymbolEnv);
   const tokenAddress = await token.getAddress();
   console.log(`OutlawToken deployed at: ${tokenAddress}`);
 
@@ -85,8 +164,7 @@ async function main() {
   // 3. Deploy HeistEngine
   console.log("Deploying HeistEngine...");
   const HeistEngine = await hre.ethers.getContractFactory("HeistEngine");
-  const engine = await HeistEngine.deploy(tokenAddress, WETH, ROUTER, rewardAddresses);
-  await engine.waitForDeployment();
+  const engine = await deployContract(HeistEngine, tokenAddress, WETH, ROUTER, rewardAddresses);
   const engineAddress = await engine.getAddress();
   console.log(`HeistEngine deployed at: ${engineAddress}`);
 
@@ -97,19 +175,19 @@ async function main() {
 
   // Send to 20 reward wallets
   for (let i = 0; i < 20; i++) {
-    const tx = await token.transfer(rewardAddresses[i], distributeAmount);
-    await tx.wait();
+    await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+      token.transfer(rewardAddresses[i], distributeAmount, { nonce, maxFeePerGas, maxPriorityFeePerGas })
+    );
     console.log(`  Sent 10M OUTLAW to reward wallet ${i + 1}: ${rewardAddresses[i]}`);
   }
 
   // Send to 10 founder wallets
   for (let i = 0; i < 10; i++) {
-    const tx = await token.transfer(founderAddresses[i], distributeAmount);
-    await tx.wait();
+    await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+      token.transfer(founderAddresses[i], distributeAmount, { nonce, maxFeePerGas, maxPriorityFeePerGas })
+    );
     console.log(`  Sent 10M OUTLAW to founder wallet ${i + 1}: ${founderAddresses[i]}`);
   }
-
-
 
   // 6. Submit permits offline for the 20 reward wallets to authorize the HeistEngine
   console.log("Signing and submitting EIP-2612 Permits for reward wallets...");
@@ -132,16 +210,18 @@ async function main() {
     );
 
     // Deployer account broadcasts the permit transactions gaslessly on behalf of the wallets
-    const tx = await token.permit(
-      wallet.address,
-      engineAddress,
-      maxAllowance,
-      deadline,
-      sig.v,
-      sig.r,
-      sig.s
+    await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+      token.permit(
+        wallet.address,
+        engineAddress,
+        maxAllowance,
+        deadline,
+        sig.v,
+        sig.r,
+        sig.s,
+        { nonce, maxFeePerGas, maxPriorityFeePerGas }
+      )
     );
-    await tx.wait();
     console.log(`  Permit submitted for reward wallet ${i + 1}: ${wallet.address}`);
   }
 
@@ -163,21 +243,14 @@ async function main() {
   let initialPriceTick: number;
 
   if (isOutlawToken0) {
-    // OUTLAW is token0
-    // Price = WETH/OUTLAW. Target price = 1.148e-9 WETH per OUTLAW.
-    // tick = ln(1.148e-9) / ln(1.0001) = -205862. Rounded to spacing = -205800.
     initialPriceTick = -205800;
-    // LP position range is ABOVE the starting price tick, close to it
     tickLower = -205600;
     tickUpper = -201800;
   } else {
-    // OUTLAW is token1
-    // Price = OUTLAW/WETH. Target price = 871,080,139 OUTLAW per WETH.
-    // tick = ln(871.08M) / ln(1.0001) = 205862. Rounded to spacing = 205800.
-    initialPriceTick = 205800;
-    // LP position range is BELOW the starting price tick, close to it
-    tickLower = 201800;
-    tickUpper = 205600;
+    // OUTLAW is token1 (Shadow Bandit)
+    initialPriceTick = 189800;
+    tickLower = 185800;
+    tickUpper = 189600;
   }
 
   // Check if pool already exists
@@ -188,14 +261,12 @@ async function main() {
   let poolAddress = await factoryObj.getPool(tokenAddress, WETH, 10000);
   
   if (poolAddress === hre.ethers.ZeroAddress) {
-    const createTx = await factoryContract.createPool(tokenAddress, WETH, 10000);
-    const receipt = await createTx.wait();
-    // Fetch pool address from logs or view
+    await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+      factoryContract.createPool(tokenAddress, WETH, 10000, { nonce, maxFeePerGas, maxPriorityFeePerGas })
+    );
     poolAddress = await factoryObj.getPool(tokenAddress, WETH, 10000);
   }
   console.log(`Uniswap V3 Pool Address: ${poolAddress}`);
-
-
 
   // Initialize pool price
   const poolContract = await hre.ethers.getContractAt(
@@ -216,8 +287,9 @@ async function main() {
 
   if (!initialized) {
     const sqrtPriceX96 = getSqrtPriceX96ForTick(initialPriceTick);
-    const initTx = await poolContract.initialize(sqrtPriceX96);
-    await initTx.wait();
+    await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+      poolContract.initialize(sqrtPriceX96, { nonce, maxFeePerGas, maxPriorityFeePerGas })
+    );
     console.log(`Pool initialized at tick: ${initialPriceTick}`);
   } else {
     console.log("Pool already initialized.");
@@ -228,8 +300,9 @@ async function main() {
   const lpSupply = 700_000_000n * 10n ** BigInt(decimals);
   
   // Approve position manager
-  const approveTx = await token.approve(NFPM, lpSupply);
-  await approveTx.wait();
+  await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+    token.approve(NFPM, lpSupply, { nonce, maxFeePerGas, maxPriorityFeePerGas })
+  );
 
   const nfpmContract = await hre.ethers.getContractAt(
     [
@@ -252,9 +325,35 @@ async function main() {
     deadline: Math.floor(Date.now() / 1000) + 3600
   };
 
-  const mintTx = await nfpmContract.mint(mintParams);
-  const mintReceipt = await mintTx.wait();
+  await sendTx((nonce, maxFeePerGas, maxPriorityFeePerGas) => 
+    nfpmContract.mint(mintParams, { nonce, maxFeePerGas, maxPriorityFeePerGas })
+  );
   console.log(`LP minted and NFT sent directly to Founder Wallet 1: ${founderAddresses[0]}`);
+
+  // Save deployed addresses to scratch/deployed_addresses.json
+  const deployedPath = path.resolve("./scratch/deployed_addresses.json");
+  const scratchDir = path.dirname(deployedPath);
+  if (!fs.existsSync(scratchDir)) {
+    fs.mkdirSync(scratchDir, { recursive: true });
+  }
+  fs.writeFileSync(
+    deployedPath,
+    JSON.stringify(
+      {
+        token: tokenAddress,
+        engine: engineAddress,
+        pool: poolAddress,
+        weth: WETH,
+        router: ROUTER,
+        factory: FACTORY,
+        nfpm: NFPM
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  console.log(`Saved deployed addresses to ${deployedPath}`);
 
   console.log("Deployment and setup complete!");
 }

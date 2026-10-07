@@ -10,3 +10,7 @@ dist
 *.log
 .agents
 .vercel
+scratch/
+.backup_before_revert/
+*.txt
+outlaw-simulator/
