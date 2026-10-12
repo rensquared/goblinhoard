@@ -545,7 +545,7 @@ export class GoblinPopulationSystem {
       const idNum = String(i + 1).padStart(3, "0");
       entity = {
         id: `GOB-${idNum}`,
-        walletAddress: `0x${Math.random().toString(16).substring(2, 8).toUpperCase()}...4663`,
+        walletAddress: `0xF00D${Math.random().toString(16).substring(2, 6).toUpperCase()}...4663`,
         displayName: `Goblin Plunderer #${idNum}`,
         balance: Math.floor(5000 + Math.random() * 45000),
         status: i % 4 === 0 ? "WALKING" : i % 3 === 0 ? "WORKING" : "IDLE",

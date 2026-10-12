@@ -89,7 +89,7 @@ export class GoblinEventManager {
 export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   {
     id: "GOB-001",
-    walletAddress: "0x7bBEE64917a2C4b036c84138e6Fe81219b264663",
+    walletAddress: "0xF00D64917a2C4b036c84138e6Fe81219b264663",
     displayName: "Grik Gold-Tooth",
     balance: 42500,
     status: "EATING",
@@ -101,7 +101,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-002",
-    walletAddress: "0x4aBEE19875F03d4B8E316719A18eB9904d464663",
+    walletAddress: "0xF00D19875F03d4B8E316719A18eB9904d464663",
     displayName: "Snagglefang",
     balance: 18200,
     status: "TALKING",
@@ -113,7 +113,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-003",
-    walletAddress: "0x9cFEE28148bA4481028e367A2063D1886e564663",
+    walletAddress: "0xF00D28148bA4481028e367A2063D1886e564663",
     displayName: "Bogwart the Sneak",
     balance: 9800,
     status: "WORKING",
@@ -125,7 +125,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-004",
-    walletAddress: "0x2dDA0174eB1C1A687B214436578d498144b64663",
+    walletAddress: "0xF00D0174eB1C1A687B214436578d498144b64663",
     displayName: "Krag Skulker",
     balance: 24100,
     status: "WORKING",
@@ -137,7 +137,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-005",
-    walletAddress: "0x5eC01783Bf8228A4064B441e863B5145b2c64663",
+    walletAddress: "0xF00D1783Bf8228A4064B441e863B5145b2c64663",
     displayName: "Skabb Coin-Snatcher",
     balance: 31400,
     status: "WORKING",
@@ -149,7 +149,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-006",
-    walletAddress: "0x1fH0A91884C004523b4991448bEbF68943f64663",
+    walletAddress: "0xF00D0A91884C004523b4991448bEbF68943f64663",
     displayName: "Blix Pick-Pocket",
     balance: 88900,
     status: "RESTING",
@@ -161,7 +161,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-007",
-    walletAddress: "0x8aGUA314782B3361A05e7144eB031448b1a64663",
+    walletAddress: "0xF00D314782B3361A05e7144eB031448b1a64663",
     displayName: "Grimjaw",
     balance: 55000,
     status: "GUARDING",
@@ -173,7 +173,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-008",
-    walletAddress: "0x3bCAR88941c48e8946123485710eF99014b64663",
+    walletAddress: "0xF00D88941c48e8946123485710eF99014b64663",
     displayName: "Nox Plunderer",
     balance: 62300,
     status: "GUARDING",
@@ -185,7 +185,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-009",
-    walletAddress: "0x6eSEN147990123f1A488914407b8123441a64663",
+    walletAddress: "0xF00D147990123f1A488914407b8123441a64663",
     displayName: "Gnasher",
     balance: 12000,
     status: "GUARDING",
@@ -197,7 +197,7 @@ export const INITIAL_GOBLIN_ENTITIES: GoblinEntity[] = [
   },
   {
     id: "GOB-010",
-    walletAddress: "0x0dROA44812399aB047c814421b81446714e64663",
+    walletAddress: "0xF00D44812399aB047c814421b81446714e64663",
     displayName: "Rumblebelly",
     balance: 15750,
     status: "WALKING",

@@ -221,6 +221,19 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState<1 | 2 | 5>(1);
 
+  // Data Source Mode & Live On-Chain Connection State (Robinhood Chain Mainnet)
+  const [syncMode, setSyncMode] = useState<"simulation" | "onchain">("onchain");
+  const [liveTokenAddress, setLiveTokenAddress] = useState<string>(
+    process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "0xD41d83f9b1dF9D15766f353B709ca0a96fb8d6c9"
+  );
+  const [liveCreatorAddress, setLiveCreatorAddress] = useState<string>(
+    process.env.NEXT_PUBLIC_CREATOR_ADDRESS || "0x5a886dA2B621E0C5BAa55E68a0e038680F2ECf11"
+  );
+  const [isOnchainConnected, setIsOnchainConnected] = useState<boolean>(true);
+  const [onchainStatusText, setOnchainStatusText] = useState<string>("Connecting to Robinhood Chain...");
+  const lastCurveBalanceRef = useRef<number>(0);
+  const lastFeeBalanceRef = useRef<number>(0);
+
   // Floating notification bubbles (managed via CSS keyframe animations, ZERO per-frame setState)
   const [eventBubbles, setEventBubbles] = useState<EventBubble[]>([]);
 
@@ -628,6 +641,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
   // Milestone Quick Jumps with Immediate Synchronous World Ascension
   const jumpToMilestone = useCallback((targetMc: number) => {
+    setSyncMode("simulation");
     setMarketCap(targetMc);
     setVolume24h(targetMc * 1.8);
     setIsForceMigrated(null);
@@ -674,6 +688,209 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
     return () => clearInterval(timer);
   }, [isSimulating, simSpeed, triggerBuyOrder, triggerRaid, triggerPyreBurnEffect]);
+
+  // Live On-Chain Polling Effect (Robinhood Chain Mainnet)
+  useEffect(() => {
+    // If not in onchain mode, do not poll or overwrite state
+    if (syncMode !== "onchain") {
+      setIsOnchainConnected(false);
+      return;
+    }
+
+    const tokenInput = liveTokenAddress.trim();
+    const creatorInput = liveCreatorAddress.trim();
+
+    if (!tokenInput && !creatorInput) {
+      setIsOnchainConnected(false);
+      setOnchainStatusText("No address provided");
+      return;
+    }
+
+    let isMounted = true;
+    const RPC_URL = "https://rpc.mainnet.chain.robinhood.com/";
+    const FEE_ESCROW_ADDR = "0xd3AFEB2a57f70eF218Aa82451c51B2fb0416Ac9e";
+    const FACTORY_ADDR = "0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e";
+
+    const fetchOnchainData = async () => {
+      try {
+        // 1. Fetch Creator Fee Balance from FeeEscrow
+        if (creatorInput.startsWith("0x") && creatorInput.length === 42) {
+          const cleanCreator = creatorInput.toLowerCase().replace("0x", "").padStart(64, "0");
+          const res = await fetch(RPC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "eth_call",
+              params: [{ to: FEE_ESCROW_ADDR, data: `0x70a08231${cleanCreator}` }, "latest"]
+            })
+          });
+          const json = await res.json();
+          if (json?.result && isMounted) {
+            const rawFees = BigInt(json.result);
+            const feeEth = Number(rawFees) / 1e18;
+            setCreatorFees(Number(feeEth.toFixed(4)));
+
+            // If creator fees increased, check goblin recruitment (0.003 ETH per goblin)
+            if (feeEth > lastFeeBalanceRef.current) {
+              const neededGoblins = Math.floor(feeEth / FEE_PER_GOBLIN);
+              if (neededGoblins > goblinCount) {
+                const spawned = populationSystemRef.current?.spawnOne();
+                if (spawned) {
+                  setGoblinCount((p) => p + 1);
+                  playCoinSound();
+                  addFloatingBubble(`👺 ${spawned.displayName} recruited via Creator Fees!`, "buy");
+                  setFeedItems((prev) => [
+                    {
+                      id: `fee-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      type: "goblins",
+                      title: `Creator Fee Recruited: ${spawned.displayName}`,
+                      subtitle: `2.5% tax spawned goblin · Buys until migration`,
+                      amount: `+${FEE_PER_GOBLIN} ETH`,
+                      isPositive: true,
+                      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    },
+                    ...prev.slice(0, 24)
+                  ]);
+                }
+              }
+              lastFeeBalanceRef.current = feeEth;
+            }
+          }
+        }
+
+        // 2. Fetch Token / Curve and Reserves
+        if (tokenInput.startsWith("0x") && tokenInput.length === 42) {
+          let resolvedCurveAddr: string | null = null;
+          const cleanInput = tokenInput.toLowerCase().replace("0x", "").padStart(64, "0");
+
+          // Test A: Check if input is a Token launched via Pons Factory (getLaunchedToken)
+          const fRes = await fetch(RPC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 2,
+              method: "eth_call",
+              params: [{ to: FACTORY_ADDR, data: `0x3cf28b5a${cleanInput}` }, "latest"]
+            })
+          });
+          const fJson = await fRes.json();
+          if (fJson?.result && fJson.result.length >= 130) {
+            // Word 1 is curve address (characters 90 to 130)
+            const extractedCurve = "0x" + fJson.result.slice(90, 130);
+            if (extractedCurve !== "0x0000000000000000000000000000000000000000") {
+              resolvedCurveAddr = extractedCurve;
+            }
+          }
+
+          // Test B: Check if input is already the Curve contract (token() call)
+          if (!resolvedCurveAddr) {
+            const cRes = await fetch(RPC_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 3,
+                method: "eth_call",
+                params: [{ to: tokenInput, data: "0xfc0c546a" }, "latest"]
+              })
+            });
+            const cJson = await cRes.json();
+            if (cJson?.result && cJson.result.length >= 66 && cJson.result !== "0x") {
+              resolvedCurveAddr = tokenInput;
+            }
+          }
+
+          if (resolvedCurveAddr) {
+            // Query Curve quoteReserve (0x9da771f4) and tokenReserve (0xcbcb3171)
+            const [qrRes, trRes] = await Promise.all([
+              fetch(RPC_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  jsonrpc: "2.0",
+                  id: 4,
+                  method: "eth_call",
+                  params: [{ to: resolvedCurveAddr, data: "0x9da771f4" }, "latest"]
+                })
+              }).then((r) => r.json()).catch(() => null),
+              fetch(RPC_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  jsonrpc: "2.0",
+                  id: 5,
+                  method: "eth_call",
+                  params: [{ to: resolvedCurveAddr, data: "0xcbcb3171" }, "latest"]
+                })
+              }).then((r) => r.json()).catch(() => null)
+            ]);
+
+            if (qrRes?.result && trRes?.result && qrRes.result.length >= 66 && trRes.result.length >= 66 && isMounted) {
+              const qrBig = BigInt(qrRes.result);
+              const trBig = BigInt(trRes.result);
+              const curveEth = Number(qrBig) / 1e18;
+              const trTokens = Number(trBig) / 1e18;
+              const priceEth = trTokens > 0 ? curveEth / trTokens : 0;
+              const calculatedMc = Number((priceEth * 1e9 * 2500).toFixed(0));
+
+              setMarketCap(calculatedMc);
+              setVolume24h(Number(Math.max(1200, curveEth * 2500 * 2.2).toFixed(0)));
+              setIsOnchainConnected(true);
+              setOnchainStatusText(`Synced (${curveEth.toFixed(3)} ETH reserve)`);
+
+              if (curveEth > lastCurveBalanceRef.current && lastCurveBalanceRef.current > 0) {
+                const diffEth = curveEth - lastCurveBalanceRef.current;
+                triggerBuyOrder(Number(diffEth.toFixed(3)));
+                addFloatingBubble(`⚔️ On-chain Buy: +${diffEth.toFixed(3)} ETH`, "buy");
+              } else if (curveEth < lastCurveBalanceRef.current && lastCurveBalanceRef.current > 0) {
+                const diffEth = lastCurveBalanceRef.current - curveEth;
+                addFloatingBubble(`🔻 On-chain Sell: -${diffEth.toFixed(3)} ETH`, "burn");
+                setFeedItems((prev) => [
+                  {
+                    id: `sell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    type: "traders",
+                    title: `Trader sold on Bonding Curve`,
+                    subtitle: `Tokens returned to liquidity reserve`,
+                    amount: `-${diffEth.toFixed(3)} ETH`,
+                    isPositive: false,
+                    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  },
+                  ...prev.slice(0, 24)
+                ]);
+              }
+              lastCurveBalanceRef.current = curveEth;
+            }
+          } else {
+            if (isMounted) {
+              setIsOnchainConnected(false);
+              setOnchainStatusText("Token/Curve not found on Pons");
+            }
+          }
+        } else if (tokenInput.length > 0 && tokenInput.length !== 42) {
+          if (isMounted) {
+            setIsOnchainConnected(false);
+            setOnchainStatusText(`Invalid address length (${tokenInput.length}/42 chars)`);
+          }
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setIsOnchainConnected(false);
+          setOnchainStatusText("RPC Error: " + (err.message || "Failed"));
+        }
+      }
+    };
+
+    fetchOnchainData();
+    const interval = setInterval(fetchOnchainData, 3500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [syncMode, liveTokenAddress, liveCreatorAddress, goblinCount, FEE_PER_GOBLIN, addFloatingBubble, playCoinSound, triggerBuyOrder]);
+
 
   // Camera presets
   const applyPreset = useCallback((preset: "camp" | "chieftain" | "fortress" | "overview" | "crypt" | "chasm" | "voidmine") => {
@@ -777,11 +994,12 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
   const handleCopyCA = useCallback(() => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText("0x4663...HOARD");
+      const addressToCopy = liveTokenAddress || "0xD41d83f9b1dF9D15766f353B709ca0a96fb8d6c9";
+      navigator.clipboard.writeText(addressToCopy);
       setCopiedCA(true);
       setTimeout(() => setCopiedCA(false), 2000);
     }
-  }, []);
+  }, [liveTokenAddress]);
 
   const handleCopyWallet = useCallback((addr: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -3596,8 +3814,10 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <div className="flex sm:hidden items-center gap-1.5 p-1 rounded-md bg-white/[0.04] border border-white/10 text-xs">
                     <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
                       <span className="text-[8.5px] bg-white/5 px-1 py-0.2 rounded border border-white/10 font-bold">CA</span>
-                      <span className="text-[9px] text-zinc-400">soon</span>
-                      <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors p-0.5">
+                      <span className="text-[9px] text-zinc-400">
+                        {liveTokenAddress ? `${liveTokenAddress.slice(0, 4)}...${liveTokenAddress.slice(-2)}` : "soon"}
+                      </span>
+                      <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors p-0.5" title="Copy Contract Address">
                         {copiedCA ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-zinc-500" />}
                       </button>
                     </div>
@@ -4188,7 +4408,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       </div>
 
                       <a
-                        href="https://ponsfamily.com"
+                        href={`https://ponsfamily.com/token/${liveTokenAddress || "0xD41d83f9b1dF9D15766f353B709ca0a96fb8d6c9"}`}
                         target="_blank"
                         rel="noreferrer"
                         className="w-full py-2 rounded bg-amber-600 hover:bg-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-colors shadow-md flex items-center justify-center gap-1.5"
@@ -4696,6 +4916,79 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <span>Burn</span>
                 </button>
               </div>
+
+              {/* Data Source Mode & Live RPC Testing */}
+              <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/[0.08] text-[9.5px]">
+                {/* Mode Switcher */}
+                <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded border border-white/10 font-mono text-[9px]">
+                  <button
+                    onClick={() => {
+                      setSyncMode("simulation");
+                      setIsOnchainConnected(false);
+                      setOnchainStatusText("Standby");
+                    }}
+                    className={`flex-1 py-0.5 rounded text-center font-bold transition-colors ${
+                      syncMode === "simulation"
+                        ? "bg-white/20 text-white shadow-sm"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    SIMULATION
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSyncMode("onchain");
+                    }}
+                    className={`flex-1 py-0.5 rounded text-center font-bold transition-colors flex items-center justify-center gap-1 ${
+                      syncMode === "onchain"
+                        ? "bg-emerald-600/80 text-white shadow-sm"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE ONCHAIN
+                  </button>
+                </div>
+
+                {/* Status indicator */}
+                <div className="flex items-center justify-between text-[8.5px]">
+                  <span className="text-zinc-400">Pons V2 Sync Status:</span>
+                  <span className={`font-mono font-semibold ${isOnchainConnected ? "text-emerald-400" : "text-amber-400"}`}>
+                    {onchainStatusText}
+                  </span>
+                </div>
+
+                {/* 1-Click Load Test Token Button */}
+                <button
+                  onClick={() => {
+                    setLiveTokenAddress("0xf8b931b2c1b04CE9aD496189bb0686A09Fcd6D5B");
+                    setSyncMode("onchain");
+                  }}
+                  className="w-full py-1 rounded bg-lime-500/10 hover:bg-lime-500/20 text-lime-400 border border-lime-500/30 text-center font-mono font-semibold text-[8.5px] transition-colors"
+                  title="Load verified Pons V2 token ($TOKEM) with active bonding curve"
+                >
+                  ⚡ Load Verified Pons Token ($TOKEM)
+                </button>
+
+                <input
+                  type="text"
+                  placeholder="Test Token CA (0x... 42 chars)"
+                  value={liveTokenAddress}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setLiveTokenAddress(val);
+                    if (val.length === 42) setSyncMode("onchain");
+                  }}
+                  className="w-full bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[9px] font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-lime-500/50"
+                />
+                <input
+                  type="text"
+                  placeholder="Fee Escrow Target (0x... 42 chars)"
+                  value={liveCreatorAddress}
+                  onChange={(e) => setLiveCreatorAddress(e.target.value.trim())}
+                  className="w-full bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[9px] font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-lime-500/50"
+                />
+              </div>
             </div>
           )}
 
@@ -4704,8 +4997,20 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             <div className="rounded-lg glass-panel px-3 py-1.5 flex items-center gap-2.5 font-sans text-xs shadow-xl">
               <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
                 <span className="text-[9px] font-mono text-zinc-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 font-bold">CA</span>
-                <span className="text-zinc-400 font-mono text-[10px]">launching soon</span>
-                <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors ml-0.5 p-1">
+                {liveTokenAddress ? (
+                  <a
+                    href={`https://robinhoodchain.blockscout.com/token/${liveTokenAddress}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-lime-400 hover:text-lime-300 font-mono text-[10px] underline underline-offset-2 transition-colors"
+                    title="View on Robinhood Blockscout Explorer"
+                  >
+                    {liveTokenAddress.slice(0, 6)}...{liveTokenAddress.slice(-4)}
+                  </a>
+                ) : (
+                  <span className="text-zinc-400 font-mono text-[10px]">launching soon</span>
+                )}
+                <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors ml-0.5 p-1" title="Copy Contract Address">
                   {copiedCA ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
                 </button>
               </div>

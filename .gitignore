@@ -1,6 +1,8 @@
 node_modules
 .env
 wallets.json
+wallets_hoard.json
+tax_wallet.json
 cache
 artifacts
 coverage
