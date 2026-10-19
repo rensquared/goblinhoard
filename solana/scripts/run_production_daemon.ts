@@ -55,6 +55,7 @@ async function main() {
 
   // 1. Load Creator Keypair
   let creatorKeypair: Keypair;
+  const creatorWalletPath = path.join(__dirname, "../wallets/creator_wallet.json");
   const devWalletPath = path.join(__dirname, "../wallets/dev_wallet.json");
   if (CONFIG.creatorPrivateKey) {
     try {
@@ -62,6 +63,9 @@ async function main() {
     } catch {
       creatorKeypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(CONFIG.creatorPrivateKey)));
     }
+  } else if (fs.existsSync(creatorWalletPath)) {
+    const data = JSON.parse(fs.readFileSync(creatorWalletPath, "utf-8"));
+    creatorKeypair = Keypair.fromSecretKey(bs58.decode(data.privateKey));
   } else if (fs.existsSync(devWalletPath)) {
     const data = JSON.parse(fs.readFileSync(devWalletPath, "utf-8"));
     creatorKeypair = Keypair.fromSecretKey(bs58.decode(data.privateKey));

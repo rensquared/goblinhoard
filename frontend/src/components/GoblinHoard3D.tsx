@@ -201,9 +201,9 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isDayMode, setIsDayMode] = useState(false);
 
-  // Economics & World Ascension Metrics (Initial launch on Pump.fun at ~$5.0K)
-  const [marketCap, setMarketCap] = useState(5000.0);
-  const [volume24h, setVolume24h] = useState(1200.0);
+  // Economics & World Ascension Metrics (Pre-launch vigil: $0 until token deployment)
+  const [marketCap, setMarketCap] = useState(0.0);
+  const [volume24h, setVolume24h] = useState(0.0);
   const [goblinCount, setGoblinCount] = useState(0);
   const [goblinBuysEth, setGoblinBuysEth] = useState(0.0);
   const [burnedHoard, setBurnedHoard] = useState(0);
@@ -231,15 +231,19 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [liveTokenAddress, setLiveTokenAddress] = useState<string>(
     process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS ||
     process.env.NEXT_PUBLIC_TOKEN_ADDRESS ||
-    "9JeFE6apEvFotefu1ocjWgSceEc3LG1LhgMxQNB4pump"
+    ""
   );
   const [liveCreatorAddress, setLiveCreatorAddress] = useState<string>(
     process.env.NEXT_PUBLIC_SOLANA_CREATOR_ADDRESS ||
     process.env.NEXT_PUBLIC_CREATOR_ADDRESS ||
-    "9umf2n1DPJb9ZE4zvrqE6xGZwszHhMHxg4k4RHUkCgob"
+    "2CNfM41sdA4AbnPPAck8KKpz7RQSSZZzKs3B3CqCrmhG"
   );
   const [isOnchainConnected, setIsOnchainConnected] = useState<boolean>(true);
-  const [onchainStatusText, setOnchainStatusText] = useState<string>("Connecting to Blockchain...");
+  const [onchainStatusText, setOnchainStatusText] = useState<string>(
+    (process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS || process.env.NEXT_PUBLIC_TOKEN_ADDRESS)
+      ? "Connecting to Blockchain..."
+      : "Awaiting Token Launch on Pump.fun"
+  );
   const lastCurveBalanceRef = useRef<number>(0);
   const lastFeeBalanceRef = useRef<number>(0);
   const prevTokenInputRef = useRef<string>("");
@@ -323,8 +327,9 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [isForceMigrated, setIsForceMigrated] = useState<boolean | null>(null);
 
   // Determine Current World Tier based on Market Cap (Initial launch on Pump.fun at ~$5.0K)
-  const currentTier =
-    (solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0) || isForceMigrated) ? 3 :
+  const currentTier = !liveTokenAddress
+    ? 0
+    : (solCurveStats?.complete || ((solCurveStats?.realSol ?? 0) >= 85.0) || isForceMigrated) ? 3 :
     marketCap < 18000 ? 0 :
     marketCap < 38000 ? 1 :
     marketCap < 69000 ? 2 : 3;
@@ -332,12 +337,16 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   currentTierRef.current = currentTier;
 
   // Active migration state: toggled manually or automatically achieved at 85 SOL / $69K Market Cap
-  const isMigrated = isForceMigrated !== null
+  const isMigrated = !liveTokenAddress
+    ? false
+    : isForceMigrated !== null
     ? isForceMigrated
-    : Boolean(solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0) || marketCap >= MIGRATION_TARGET);
+    : Boolean(solCurveStats?.complete || ((solCurveStats?.realSol ?? 0) >= 85.0) || marketCap >= MIGRATION_TARGET);
 
-  const migrationProgressPct = solCurveStats?.progressPct !== undefined
-    ? solCurveStats.progressPct
+  const migrationProgressPct = !liveTokenAddress
+    ? 0
+    : solCurveStats?.progressPct !== undefined
+    ? (solCurveStats.progressPct ?? 0)
     : Math.min(
         100,
         Math.max(0, ((marketCap - 5000) / (MIGRATION_TARGET - 5000)) * 100)
@@ -720,7 +729,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     const feeA = Number((amountSol * 0.20).toFixed(4)); // 0.2% fee equivalent
     const feeB = Number((amountSol * 0.80).toFixed(4)); // 0.8% fee equivalent
     const threshold = goblinSpawnThresholdSol;
-    const isMigrated = Boolean(solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0));
+    const isMigrated = Boolean(solCurveStats?.complete || ((solCurveStats?.realSol ?? 0) >= 85.0));
 
     setSplitFeeStats((prev) => ({
       totalCollectedSol: Number((prev.totalCollectedSol + amountSol).toFixed(4)),
@@ -4150,7 +4159,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       THE HOARD
                     </h1>
                     <span className="text-[9px] font-semibold text-zinc-400 tracking-[0.1em] uppercase mt-0.5">
-                      {!liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? "SOLANA MAINNET" : "ROBINHOOD CHAIN"}
+                      SOLANA MAINNET
                     </span>
                   </div>
                 </div>
@@ -4171,6 +4180,27 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                     <div className="w-px h-3 bg-white/10" />
 
                     <button
+                      disabled={!liveTokenAddress}
+                      onClick={() => {
+                        if (liveTokenAddress) {
+                          navigator.clipboard.writeText(liveTokenAddress);
+                          setCopiedCA(true);
+                          setTimeout(() => setCopiedCA(false), 2000);
+                        }
+                      }}
+                      className="text-[10px] font-mono text-amber-300/90 font-medium px-1"
+                      title={liveTokenAddress ? `Copy CA: ${liveTokenAddress}` : "Launching soon on Pump.fun"}
+                    >
+                      {liveTokenAddress
+                        ? copiedCA
+                          ? "Copied!"
+                          : `${liveTokenAddress.slice(0, 4)}..${liveTokenAddress.slice(-4)}`
+                        : "CA: launching soon"}
+                    </button>
+
+                    <div className="w-px h-3 bg-white/10" />
+
+                    <button
                       onClick={toggleAudio}
                       className={`p-0.5 transition-colors ${audioEnabled ? "text-amber-400" : "text-zinc-500"}`}
                       title={audioEnabled ? "Mute ambient audio" : "Play ambient audio"}
@@ -4185,8 +4215,30 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 </div>
               </div>
 
-              {/* Dynamic Phase: Pre-Migration vs Warband is Out */}
-              {!isMigrated ? (
+              {/* Dynamic Phase: Pre-Launch Vigil vs Pre-Migration vs Warband is Out */}
+              {!liveTokenAddress ? (
+                /* PRE-LAUNCH VIGIL PHASE */
+                <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/[0.06]">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 text-zinc-200 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="tracking-wide">Campfire Vigil</span>
+                    </div>
+                    <span className="text-amber-400 font-mono font-bold text-[10px] uppercase tracking-wider">
+                      Launching Soon
+                    </span>
+                  </div>
+
+                  {/* Clean thin progress bar */}
+                  <div className="relative w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500/40 w-full animate-pulse" />
+                  </div>
+
+                  <p className="text-[10px] text-zinc-400 leading-snug">
+                    Awaiting $HOARD deploy on Pump.fun · Goblins stand ready
+                  </p>
+                </div>
+              ) : !isMigrated ? (
                 /* PRE-MIGRATION PHASE */
                 <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/[0.06]">
                   <div className="flex items-center justify-between text-xs">
@@ -4229,7 +4281,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   </div>
 
                   <p className="text-[10px] text-zinc-400 leading-snug">
-                    Every new Robinhood Chain launch gets attacked.
+                    Every new Solana launchpad pair gets raided.
                   </p>
                 </div>
               )}
@@ -4376,7 +4428,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   LOOT
                 </span>
                 <span className="text-sm font-bold text-amber-300 font-mono tabular-nums leading-tight mt-1">
-                  {goblinBuysEth.toFixed(2)} {!liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? "SOL" : "ETH"}
+                  {goblinBuysEth.toFixed(2)} SOL
                 </span>
                 <span className="text-[9.5px] text-zinc-500 font-mono mt-0.5">
                   into $HOARD
@@ -4406,7 +4458,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   NEXT SPAWN
                 </span>
                 <span className="text-sm font-bold text-zinc-200 font-mono tabular-nums leading-tight mt-1">
-                  {feeRemainder.toFixed(4)} {!liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? "SOL" : "ETH"}
+                  {feeRemainder.toFixed(4)} SOL
                 </span>
                 <span className="text-[9.5px] text-zinc-500 font-mono mt-0.5">
                   {nextGoblinPercent}% of threshold
@@ -4739,16 +4791,28 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
                       <a
                         href={
-                          isMigrated
+                          !liveTokenAddress
+                            ? "#"
+                            : isMigrated
                             ? `https://raydium.io/swap/?inputMint=sol&outputMint=${liveTokenAddress}`
                             : `https://pump.fun/coin/${liveTokenAddress}`
                         }
-                        target="_blank"
+                        target={!liveTokenAddress ? undefined : "_blank"}
                         rel="noreferrer"
-                        className="w-full py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs tracking-wider uppercase transition-colors shadow-md flex items-center justify-center gap-1.5"
+                        className={`w-full py-2 rounded font-bold text-xs tracking-wider uppercase transition-colors shadow-md flex items-center justify-center gap-1.5 ${
+                          !liveTokenAddress
+                            ? "bg-amber-500/80 cursor-default animate-pulse text-black"
+                            : "bg-amber-500 hover:bg-amber-400 text-black"
+                        }`}
                       >
                         <Coins className="w-3.5 h-3.5" />
-                        <span>{isMigrated ? "Trade $HOARD on Raydium" : "Acquire $HOARD on Pump.fun"}</span>
+                        <span>
+                          {!liveTokenAddress
+                            ? "✨ Launching Soon on Pump.fun"
+                            : isMigrated
+                            ? "Trade $HOARD on Raydium"
+                            : "Acquire $HOARD on Pump.fun"}
+                        </span>
                       </a>
                     </div>
                   </div>
@@ -5130,8 +5194,8 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
           </div>
 
-          {/* SOLANA PUMP.FUN SANDBOX & LIVE PAIR TESTER */}
-          {showSimulator && (
+          {/* SOLANA PUMP.FUN SANDBOX & LIVE PAIR TESTER (DISABLED FOR LAUNCH) */}
+          {false && showSimulator && (
             <div className="absolute bottom-16 left-4 z-40 w-[320px] sm:w-[360px] max-h-[82vh] overflow-y-auto rounded-xl glass-panel p-3.5 flex flex-col gap-2.5 font-sans border border-amber-500/30 shadow-2xl backdrop-blur-xl">
               {/* Header Bar */}
               <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
@@ -5215,25 +5279,25 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               )}
 
               {/* Active Solana Curve Progress Card */}
-              {solCurveStats && (
+              {Boolean(solCurveStats) && (
                 <div className="glass-panel-sub p-2.5 rounded-lg flex flex-col gap-1.5 border border-emerald-500/20 bg-emerald-950/20">
                   <div className="flex items-center justify-between text-[9.5px]">
                     <span className="text-zinc-300 font-medium">Bonding Curve Liquidity:</span>
                     <span className="text-emerald-400 font-bold font-mono">
-                      {solCurveStats.realSol.toFixed(2)} / 85.0 SOL
+                      {(solCurveStats?.realSol ?? 0).toFixed(2)} / 85.0 SOL
                     </span>
                   </div>
                   {/* Visual Progress Bar */}
                   <div className="w-full bg-black/70 h-2 rounded-full overflow-hidden border border-white/10">
                     <div
                       className="h-full bg-gradient-to-r from-emerald-500 via-lime-400 to-amber-300 rounded-full transition-all duration-700"
-                      style={{ width: `${Math.min(100, solCurveStats.progressPct)}%` }}
+                      style={{ width: `${Math.min(100, solCurveStats?.progressPct ?? 0)}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-[8.5px] text-zinc-400 font-mono">
-                    <span>{solCurveStats.progressPct}% to Raydium Migration</span>
-                    <span className={solCurveStats.complete ? "text-emerald-300 font-bold" : "text-amber-300 font-semibold"}>
-                      {solCurveStats.complete ? "🚀 MIGRATED" : "IN PROGRESS"}
+                    <span>{solCurveStats?.progressPct ?? 0}% to Raydium Migration</span>
+                    <span className={solCurveStats?.complete ? "text-emerald-300 font-bold" : "text-amber-300 font-semibold"}>
+                      {solCurveStats?.complete ? "🚀 MIGRATED" : "IN PROGRESS"}
                     </span>
                   </div>
                 </div>
@@ -5420,14 +5484,14 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
                 {/* Auto-Buyer Status Banner */}
                 <div className={`p-1.5 rounded text-[8px] font-mono flex items-center justify-between border ${
-                  solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0)
+                  solCurveStats?.complete || ((solCurveStats?.realSol ?? 0) >= 85.0)
                     ? "bg-purple-950/40 border-purple-500/30 text-purple-200"
                     : "bg-emerald-950/40 border-emerald-500/30 text-emerald-200"
                 }`}>
                   <span className="flex items-center gap-1 font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     <span>
-                      {solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0)
+                      {solCurveStats?.complete || ((solCurveStats?.realSol ?? 0) >= 85.0)
                         ? "MIGRATED TO RAYDIUM 🚀"
                         : "GOBLINS BUYING UNTIL MIGRATION"}
                     </span>
@@ -5656,6 +5720,37 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
               <div className="w-px h-3.5 bg-white/10" />
 
+              {/* CA Status Button / Pill */}
+              <button
+                disabled={!liveTokenAddress}
+                onClick={() => {
+                  if (liveTokenAddress) {
+                    navigator.clipboard.writeText(liveTokenAddress);
+                    setCopiedCA(true);
+                    setTimeout(() => setCopiedCA(false), 2000);
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono transition-colors ${
+                  !liveTokenAddress
+                    ? "bg-amber-500/10 text-amber-300/90 border border-amber-500/20 cursor-default"
+                    : copiedCA
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    : "bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10"
+                }`}
+                title={liveTokenAddress ? `Click to copy CA: ${liveTokenAddress}` : "Token launching soon on Pump.fun"}
+              >
+                <span className="text-[10px] text-zinc-500 font-sans font-medium">CA:</span>
+                <span className="font-semibold">
+                  {liveTokenAddress
+                    ? copiedCA
+                      ? "Copied!"
+                      : `${liveTokenAddress.slice(0, 4)}...${liveTokenAddress.slice(-4)}`
+                    : "launching soon"}
+                </span>
+              </button>
+
+              <div className="w-px h-3.5 bg-white/10" />
+
               <button
                 onClick={toggleAudio}
                 className={`transition-colors p-1 ${audioEnabled ? "text-amber-400" : "text-zinc-500 hover:text-zinc-300"}`}
@@ -5711,7 +5806,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   </div>
                   <span>The camp is currently empty.</span>
                   <span className="text-[10px] text-zinc-400">
-                    Goblins will spawn as creator fees accumulate on Robinhood Chain!
+                    Goblins will spawn as creator fees accumulate on Solana!
                   </span>
                 </div>
               ) : (

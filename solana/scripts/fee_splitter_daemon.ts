@@ -59,9 +59,13 @@ async function runFeeSplitter() {
     }
   } else {
     // Check local wallets file
-    const walletPath = path.join(__dirname, "../wallets/dev_wallet.json");
-    if (fs.existsSync(walletPath)) {
-      const data = JSON.parse(fs.readFileSync(walletPath, "utf-8"));
+    const creatorWalletPath = path.join(__dirname, "../wallets/creator_wallet.json");
+    const devWalletPath = path.join(__dirname, "../wallets/dev_wallet.json");
+    if (fs.existsSync(creatorWalletPath)) {
+      const data = JSON.parse(fs.readFileSync(creatorWalletPath, "utf-8"));
+      creatorKeypair = Keypair.fromSecretKey(bs58.decode(data.privateKey));
+    } else if (fs.existsSync(devWalletPath)) {
+      const data = JSON.parse(fs.readFileSync(devWalletPath, "utf-8"));
       creatorKeypair = Keypair.fromSecretKey(bs58.decode(data.privateKey));
     } else {
       console.log("⚠️ No CREATOR_PRIVATE_KEY provided. Generating a demo creator keypair for testing...");
