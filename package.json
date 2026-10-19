@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "solana:test:dryrun": "ts-node solana/scripts/test_pipeline_dryrun.ts",
+    "solana:daemon": "ts-node solana/scripts/run_production_daemon.ts",
+    "solana:splitter": "ts-node solana/scripts/fee_splitter_daemon.ts",
+    "solana:autobuyer": "ts-node solana/scripts/goblin_auto_buyer.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +22,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "ethers": "^6.17.0"
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.99.0",
+    "@types/node-fetch": "^2.6.13",
+    "bs58": "^6.0.0",
+    "ethers": "^6.17.0",
+    "form-data": "^4.0.6",
+    "node-fetch": "^2.7.0"
   }
 }

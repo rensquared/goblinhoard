@@ -14,5 +14,12 @@ dist
 .vercel
 scratch/
 .backup_before_revert/
+solana/wallets/*.json
+solana/*wallets*.json
+solana/scratch/
+!solana/wallets/*.example
+.env*
+!*.example
 *.txt
 outlaw-simulator/
+

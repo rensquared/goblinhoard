@@ -17,7 +17,10 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      // Local fork or in-memory network for testing
+      forking: {
+        url: "https://rpc.mainnet.chain.robinhood.com/",
+      },
+      blockGasLimit: 300000000,
     },
     robinhood: {
       url: "https://rpc.mainnet.chain.robinhood.com/",

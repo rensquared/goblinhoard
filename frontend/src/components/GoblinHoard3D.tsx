@@ -7,6 +7,7 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 import { GoblinPopulationSystem, CampObstacle, GoblinAgent } from "./GoblinPopulation";
 import { GoblinEntity } from "./GoblinEntity";
+import { PublicKey } from "@solana/web3.js";
 import {
   Compass,
   Navigation,
@@ -96,29 +97,29 @@ export const DUNGEONS: DungeonDefinition[] = [
   {
     id: "crypt",
     name: "Crypt of the Memes",
-    subtitle: "PonsFamily live launchpad pairs",
+    subtitle: "Pump.fun live breakout trenches",
     position: new THREE.Vector3(14.5, 0, 12.0),
     color: 0x9333ea, // Purple
     unlockedTier: 1,
-    tickers: ["$FLOPPYCAT", "$MOCHI", "$ZAZIE", "$HASHLINGS", "$PONS"]
+    tickers: ["$BONK", "$WIF", "$POPCAT", "$MOODENG", "$GOAT"]
   },
   {
     id: "chasm",
     name: "Dragon's Chasm",
-    subtitle: "PonsFamily breakout volume trenches",
+    subtitle: "High-volume Solana breakout pairs",
     position: new THREE.Vector3(-15.0, 0, -14.0),
     color: 0xef4444, // Crimson red
     unlockedTier: 2,
-    tickers: ["$GRIFFAIN", "$UNSEEN", "$GAMMA", "$ITNRY"]
+    tickers: ["$FARTCOIN", "$ACT", "$PENGU", "$CHILLGUY"]
   },
   {
     id: "voidmine",
     name: "Void Mine",
-    subtitle: "Stealth PonsFamily bonding curve launches",
+    subtitle: "Stealth Raydium bonding curve launches",
     position: new THREE.Vector3(-17.5, 0, 3.5),
     color: 0x06b6d4, // Cyan
     unlockedTier: 3,
-    tickers: ["$DEXINFOX", "$CHAD", "$ROBIN", "$WOJAK"]
+    tickers: ["$ZEREBRO", "$GIGA", "$AI16Z", "$SPX"]
   }
 ];
 
@@ -156,7 +157,7 @@ const INITIAL_FEED_ITEMS: FeedItem[] = [
     id: "f-1",
     type: "goblins",
     title: "Campfire ignited · Awaiting token launch",
-    subtitle: "Solitary hearth prepared on Robinhood Chain",
+    subtitle: "Solitary hearth prepared on Solana Pump.fun",
     time: "Genesis"
   },
   {
@@ -169,8 +170,8 @@ const INITIAL_FEED_ITEMS: FeedItem[] = [
   {
     id: "f-3",
     type: "traders",
-    title: "Summoning threshold: 0.003 ETH of creator fees",
-    subtitle: "Every fee spawns a goblin. Every goblin buys.",
+    title: "Summoning threshold: 0.005 SOL (0.2% fee split)",
+    subtitle: "Every fee spawns a goblin. Every goblin buys until migration.",
     time: "Rule"
   },
   {
@@ -200,16 +201,20 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isDayMode, setIsDayMode] = useState(false);
 
-  // Economics & World Ascension Metrics (Initial launch on ponsfamily at ~$4.7K)
-  const [marketCap, setMarketCap] = useState(4700.0);
+  // Economics & World Ascension Metrics (Initial launch on Pump.fun at ~$5.0K)
+  const [marketCap, setMarketCap] = useState(5000.0);
   const [volume24h, setVolume24h] = useState(1200.0);
   const [goblinCount, setGoblinCount] = useState(0);
   const [goblinBuysEth, setGoblinBuysEth] = useState(0.0);
   const [burnedHoard, setBurnedHoard] = useState(0);
   const [creatorFees, setCreatorFees] = useState(0.0);
 
-  // 0.003 ETH per goblin as explicitly requested (ETH @ $2,761)
-  const FEE_PER_GOBLIN = 0.003;
+  // Solana Pump.fun Split Creator Fees (0.2% to Goblin Wallet ending in ...gob, 0.8% to Treasury)
+  const [splitWalletA, setSplitWalletA] = useState("9umf2n1DPJb9ZE4zvrqE6xGZwszHhMHxg4k4RHUkCgob");
+  const [splitWalletB, setSplitWalletB] = useState("HoardAltarTreasury111111111111111111111111");
+  const [goblinSpawnThresholdSol, setGoblinSpawnThresholdSol] = useState<number>(0.005);
+  // Goblin Hatch & Buy Threshold (0.005 SOL optimal for steady warband spawns)
+  const FEE_PER_GOBLIN = goblinSpawnThresholdSol;
 
   // Hive-Mind Metrics ("The Chieftain has given the goblins a brain")
   const [hiveGen, setHiveGen] = useState(3);
@@ -221,18 +226,43 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState<1 | 2 | 5>(1);
 
-  // Data Source Mode & Live On-Chain Connection State (Robinhood Chain Mainnet)
+  // Data Source Mode & Live On-Chain Connection State (Solana / EVM)
   const [syncMode, setSyncMode] = useState<"simulation" | "onchain">("onchain");
   const [liveTokenAddress, setLiveTokenAddress] = useState<string>(
-    process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "0xD41d83f9b1dF9D15766f353B709ca0a96fb8d6c9"
+    process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS ||
+    process.env.NEXT_PUBLIC_TOKEN_ADDRESS ||
+    "9JeFE6apEvFotefu1ocjWgSceEc3LG1LhgMxQNB4pump"
   );
   const [liveCreatorAddress, setLiveCreatorAddress] = useState<string>(
-    process.env.NEXT_PUBLIC_CREATOR_ADDRESS || "0x5a886dA2B621E0C5BAa55E68a0e038680F2ECf11"
+    process.env.NEXT_PUBLIC_SOLANA_CREATOR_ADDRESS ||
+    process.env.NEXT_PUBLIC_CREATOR_ADDRESS ||
+    "9umf2n1DPJb9ZE4zvrqE6xGZwszHhMHxg4k4RHUkCgob"
   );
   const [isOnchainConnected, setIsOnchainConnected] = useState<boolean>(true);
-  const [onchainStatusText, setOnchainStatusText] = useState<string>("Connecting to Robinhood Chain...");
+  const [onchainStatusText, setOnchainStatusText] = useState<string>("Connecting to Blockchain...");
   const lastCurveBalanceRef = useRef<number>(0);
   const lastFeeBalanceRef = useRef<number>(0);
+  const prevTokenInputRef = useRef<string>("");
+
+  // Solana Pump.fun Curve Live State & Sandbox Helpers
+  const [solCurveStats, setSolCurveStats] = useState<{
+    realSol: number;
+    virtualSol: number;
+    complete: boolean;
+    progressPct: number;
+    tokenSymbol?: string;
+    dexName?: string;
+  } | null>(null);
+  const [recentSolTokens, setRecentSolTokens] = useState<{ address: string; name: string }[]>([]);
+  const [isLoadingRecentTokens, setIsLoadingRecentTokens] = useState(false);
+
+  const [splitFeeStats, setSplitFeeStats] = useState({
+    totalCollectedSol: 0,
+    walletASol: 0, // 20% (0.2% fee share -> Goblins auto-buy $HOARD)
+    walletBSol: 0, // 80% (0.8% fee share -> Altar/Treasury)
+    totalGoblinsSpawned: 0,
+    splitCount: 0
+  });
 
   // Floating notification bubbles (managed via CSS keyframe animations, ZERO per-frame setState)
   const [eventBubbles, setEventBubbles] = useState<EventBubble[]>([]);
@@ -288,43 +318,49 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const pointerDownPos = useRef({ x: 0, y: 0 });
   const keysPressed = useRef<{ [key: string]: boolean }>({});
 
-  // Migration Milestone Configuration (Bonding curve graduation on ponsfamily at $40.0K Market Cap)
-  const MIGRATION_TARGET = 40000;
+  // Migration Milestone Configuration (Pump.fun graduation to Raydium at 85 SOL / ~$69.0K Market Cap)
+  const MIGRATION_TARGET = 69000;
   const [isForceMigrated, setIsForceMigrated] = useState<boolean | null>(null);
 
-  // Determine Current World Tier based on Market Cap (Initial launch on ponsfamily at ~$4.7K)
+  // Determine Current World Tier based on Market Cap (Initial launch on Pump.fun at ~$5.0K)
   const currentTier =
-    marketCap < 12000 ? 0 :
-    marketCap < 25000 ? 1 :
-    marketCap < 40000 ? 2 : 3;
+    (solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0) || isForceMigrated) ? 3 :
+    marketCap < 18000 ? 0 :
+    marketCap < 38000 ? 1 :
+    marketCap < 69000 ? 2 : 3;
 
   currentTierRef.current = currentTier;
 
-  // Active migration state: toggled manually or automatically achieved at $40K Market Cap
-  const isMigrated = isForceMigrated !== null ? isForceMigrated : marketCap >= MIGRATION_TARGET;
-  const migrationProgressPct = Math.min(
-    100,
-    Math.max(0, ((marketCap - 4700) / (MIGRATION_TARGET - 4700)) * 100)
-  );
+  // Active migration state: toggled manually or automatically achieved at 85 SOL / $69K Market Cap
+  const isMigrated = isForceMigrated !== null
+    ? isForceMigrated
+    : Boolean(solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0) || marketCap >= MIGRATION_TARGET);
+
+  const migrationProgressPct = solCurveStats?.progressPct !== undefined
+    ? solCurveStats.progressPct
+    : Math.min(
+        100,
+        Math.max(0, ((marketCap - 5000) / (MIGRATION_TARGET - 5000)) * 100)
+      );
 
   const ASCENSION_MILESTONES = [
-    { tier: 0, label: "T0", name: "Genesis", mcap: 4700, display: "$4.7K" },
-    { tier: 1, label: "T1", name: "Warband", mcap: 12000, display: "$12K" },
-    { tier: 2, label: "T2", name: "Dragon's Chasm", mcap: 25000, display: "$25K" },
-    { tier: 3, label: "T3", name: "Citadel Migration", mcap: 40000, display: "$40K" },
-    { tier: 4, label: "Ascend", name: "Final Ascension", mcap: 100000, display: "$100K" }
+    { tier: 0, label: "T0", name: "Genesis Bog", mcap: 5000, display: "$5.0K" },
+    { tier: 1, label: "T1", name: "Warband Mud Camp", mcap: 18000, display: "$18K" },
+    { tier: 2, label: "T2", name: "Dragon's Chasm", mcap: 38000, display: "$38K" },
+    { tier: 3, label: "T3", name: "Raydium Migration", mcap: 69000, display: "$69K" },
+    { tier: 4, label: "Ascend", name: "Citadel Overlord", mcap: 150000, display: "$150K" }
   ];
 
   const nextMilestone =
-    marketCap < 12000 ? ASCENSION_MILESTONES[1] :
-    marketCap < 25000 ? ASCENSION_MILESTONES[2] :
-    marketCap < 40000 ? ASCENSION_MILESTONES[3] :
+    marketCap < 18000 ? ASCENSION_MILESTONES[1] :
+    marketCap < 38000 ? ASCENSION_MILESTONES[2] :
+    marketCap < 69000 ? ASCENSION_MILESTONES[3] :
     ASCENSION_MILESTONES[4];
 
   const prevMilestoneMcap =
-    marketCap < 12000 ? 4700 :
-    marketCap < 25000 ? 12000 :
-    marketCap < 40000 ? 25000 : 40000;
+    marketCap < 18000 ? 5000 :
+    marketCap < 38000 ? 18000 :
+    marketCap < 69000 ? 38000 : 69000;
 
   const currentMilestoneProgress = Math.min(
     100,
@@ -332,29 +368,29 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   );
 
   const tierNames = [
-    "Campfire Vigil (Genesis · $4.7K)",
-    "Warband & Outpost Unlocked ($12K)",
-    "Stronghold & Dragon's Chasm ($25K)",
-    "Citadel & DEX Migration ($40K)"
+    "Genesis Bog (Pump.fun · $5.0K)",
+    "Warband & Mud Keep ($18K)",
+    "Stronghold & Dragon's Chasm ($38K)",
+    "Citadel & Raydium Migration ($69K)"
   ];
 
   const tierNextTarget =
-    currentTier === 0 ? 12000 :
-    currentTier === 1 ? 25000 :
-    currentTier === 2 ? 40000 : 100000;
+    currentTier === 0 ? 18000 :
+    currentTier === 1 ? 38000 :
+    currentTier === 2 ? 69000 : 150000;
 
   const tierBaseTarget =
-    currentTier === 0 ? 4700 :
-    currentTier === 1 ? 12000 :
-    currentTier === 2 ? 25000 : 40000;
+    currentTier === 0 ? 5000 :
+    currentTier === 1 ? 18000 :
+    currentTier === 2 ? 38000 : 69000;
 
   const tierProgressPct = Math.min(100, Math.max(0, ((marketCap - tierBaseTarget) / (tierNextTarget - tierBaseTarget)) * 100));
 
   const tierDescriptions = [
-    "At $12.0K Market Cap, the Chieftain Keep is fortified, the Warband gathers, and Crypt of the Memes unseals.",
-    "At $25.0K Market Cap, the Castle expands, Goblin Mine opens, and Dragon's Chasm awakens for multi-token raids.",
-    "At $40.0K Market Cap, Bonding Curve graduates, Citadel unlocks, and the Warband migrates to DEX.",
-    "Ascended Realm ($100K+ MC) · Golden monument and eternal $HOARD supremacy."
+    "At $18.0K Market Cap (~20 SOL), the Chieftain Keep is fortified, the Warband gathers, and Crypt of the Memes unseals.",
+    "At $38.0K Market Cap (~45 SOL), the Castle expands, Goblin Mine opens, and Dragon's Chasm awakens for multi-token raids.",
+    "At $69.0K Market Cap (85 SOL), Bonding Curve graduates, Citadel unlocks, and the Warband migrates to Raydium.",
+    "Ascended Realm ($150K+ MC) · Golden monument and multi-pair looting dominance."
   ];
 
   // Synchronous Tier Group Visibility Updater
@@ -395,12 +431,49 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
       text,
       type
     };
-    setEventBubbles((prev) => [...prev.slice(-3), newBubble]);
+    setEventBubbles((prev) => [...prev.slice(-4), newBubble]);
 
-    // Auto-dismiss after 2.6s
+    // Auto-dismiss after 3.8s
     setTimeout(() => {
       setEventBubbles((prev) => prev.filter((b) => b.id !== newBubble.id));
-    }, 2600);
+    }, 3800);
+  }, []);
+
+
+  const handlePasteSolanaCA = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const trimmed = text.trim();
+        setLiveTokenAddress(trimmed);
+        setSyncMode("onchain");
+        addFloatingBubble(`📋 Pasted CA: ${trimmed.slice(0, 6)}...`, "buy");
+      }
+    } catch {
+      // clipboard read fallback
+    }
+  }, [addFloatingBubble]);
+
+  const fetchRecentSolanaTokens = useCallback(async () => {
+    setIsLoadingRecentTokens(true);
+    try {
+      const res = await fetch("https://api.dexscreener.com/token-profiles/latest/v1");
+      const json = await res.json();
+      if (Array.isArray(json)) {
+        const sol = json
+          .filter((t: any) => t.chainId === "solana" && t.tokenAddress)
+          .slice(0, 6)
+          .map((t: any) => ({
+            address: t.tokenAddress,
+            name: t.description ? t.description.slice(0, 16) : `${t.tokenAddress.slice(0, 4)}...${t.tokenAddress.slice(-4)}`
+          }));
+        setRecentSolTokens(sol);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch trending tokens:", e);
+    } finally {
+      setIsLoadingRecentTokens(false);
+    }
   }, []);
 
   // Procedural Sound FX Synthesizers
@@ -519,7 +592,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
         id: `burn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         type: "burns",
         title: `Burn Pyre consumed ${amount.toLocaleString()} $HOARD`,
-        subtitle: `Sacrificed to the hearth flame (-0.003 ETH)`,
+        subtitle: `Sacrificed to the hearth flame (-0.005 SOL)`,
         amount: `-${amount.toLocaleString()}`,
         isPositive: false,
         time: timeStr
@@ -541,18 +614,18 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
       : unlockedDungeons[Math.floor(Math.random() * unlockedDungeons.length)];
 
     const chosenTicker = chosenDungeon.tickers[Math.floor(Math.random() * chosenDungeon.tickers.length)];
-    const lootEth = Number((0.0001 + Math.random() * 0.0004).toFixed(5));
+    const lootSol = Number((0.0005 + Math.random() * 0.002).toFixed(4));
 
     const raider = populationSystemRef.current?.dispatchRaid(
       chosenDungeon.position,
       chosenTicker,
-      lootEth,
+      lootSol,
       // Plunder event
       (_agent, ticker, loot) => {
-        addFloatingBubble(`⚔️ +${loot} ETH pillaged from ${ticker}!`, "raid");
+        addFloatingBubble(`⚔️ +${loot} SOL pillaged from ${ticker}!`, "raid");
       },
       // Return & deposit event at Treasury Hoard
-      (agent, _ticker, loot) => {
+      (agent, ticker, loot) => {
         setGoblinBuysEth((p) => Number((p + loot).toFixed(4)));
         setVolume24h((p) => p + loot * 2800);
         setMarketCap((p) => p + loot * 1400);
@@ -572,6 +645,8 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
         // Hive-Mind learning
         if (Math.random() > 0.6) {
           addFloatingBubble(`🧠 ${agent.entity.displayName} evolved Take-Profit DNA!`, "brain");
+        } else {
+          addFloatingBubble(`🔥 +${loot} SOL loot burned into $HOARD Pyre!`, "burn");
         }
 
         const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -580,8 +655,8 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             id: `raid-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             type: "raids",
             title: `Raid victory at ${chosenDungeon.name}!`,
-            subtitle: `${agent.entity.displayName} returned with ${loot} ETH loot`,
-            amount: `+${loot} ETH`,
+            subtitle: `${agent.entity.displayName} returned with ${loot} SOL loot from ${ticker}`,
+            amount: `+${loot} SOL`,
             isPositive: true,
             time: timeStr
           },
@@ -592,15 +667,15 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
     if (raider) {
       playHornSound();
-      addFloatingBubble(`⚔️ ${raider.entity.displayName} dispatched to ${chosenDungeon.name}!`, "raid");
+      addFloatingBubble(`⚔️ ${raider.entity.displayName} dispatched to raid ${chosenTicker}!`, "raid");
     }
   }, [addFloatingBubble, triggerPyreBurnEffect, playHornSound, playCoinSound]);
 
   // Simulate on-chain buy order
-  const triggerBuyOrder = useCallback((ethAmount: number = 0.05) => {
-    const newBuys = Number((goblinBuysEth + ethAmount).toFixed(3));
+  const triggerBuyOrder = useCallback((solAmount: number = 0.05) => {
+    const newBuys = Number((goblinBuysEth + solAmount).toFixed(3));
     setGoblinBuysEth(newBuys);
-    const addedVol = ethAmount * 3000;
+    const addedVol = solAmount * 3000;
     setVolume24h((p) => p + addedVol);
     setMarketCap((p) => Number((p + addedVol * 0.85).toFixed(2)));
 
@@ -609,11 +684,11 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     hoardScaleTargetRef.current = Math.min(2.4, hoardScaleTargetRef.current + 0.02);
 
     // Accrue creator fee (1.5% fee on volume)
-    const feeAccrued = ethAmount * 0.025;
+    const feeAccrued = solAmount * 0.025;
     const newTotalFees = Number((creatorFees + feeAccrued).toFixed(4));
     setCreatorFees(newTotalFees);
 
-    // Check if creator fees recruited next goblin (at 0.003 ETH per goblin)
+    // Check if creator fees recruited next goblin
     if (newTotalFees >= (goblinCount + 1) * FEE_PER_GOBLIN) {
       const newGoblin = populationSystemRef.current?.spawnOne();
       if (newGoblin) {
@@ -622,22 +697,84 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
       }
     }
 
-    addFloatingBubble(`💰 Buy +${ethAmount} ETH ($HOARD)`, "buy");
+    addFloatingBubble(`💰 Buy +${solAmount} SOL ($HOARD)`, "buy");
 
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setFeedItems((prev) => [
       {
         id: `buy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         type: "traders",
-        title: `Trader bought $HOARD on Robinhood Chain`,
-        subtitle: `Autonomous router executed swap`,
-        amount: `+${ethAmount} ETH`,
+        title: `Trader bought $HOARD on Pump.fun`,
+        subtitle: `Bonding curve swap verified`,
+        amount: `+${solAmount} SOL`,
         isPositive: true,
         time: timeStr
       },
       ...prev.slice(0, 20)
     ]);
-  }, [goblinBuysEth, creatorFees, goblinCount, FEE_PER_GOBLIN, addFloatingBubble]);
+  }, [goblinBuysEth, creatorFees, goblinCount, FEE_PER_GOBLIN, addFloatingBubble, playCoinSound]);
+
+  // Simulate Pump.fun Creator Fee Split (0.2% to Goblin Wallet, 0.8% to Treasury)
+  // Goblins spawn at goblinSpawnThresholdSol and keep buying $HOARD until migration!
+  const simulateFeeSplit = useCallback((amountSol: number = 0.05) => {
+    const feeA = Number((amountSol * 0.20).toFixed(4)); // 0.2% fee equivalent
+    const feeB = Number((amountSol * 0.80).toFixed(4)); // 0.8% fee equivalent
+    const threshold = goblinSpawnThresholdSol;
+    const isMigrated = Boolean(solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0));
+
+    setSplitFeeStats((prev) => ({
+      totalCollectedSol: Number((prev.totalCollectedSol + amountSol).toFixed(4)),
+      walletASol: Number((prev.walletASol + feeA).toFixed(4)),
+      walletBSol: Number((prev.walletBSol + feeB).toFixed(4)),
+      totalGoblinsSpawned: prev.totalGoblinsSpawned,
+      splitCount: prev.splitCount + 1
+    }));
+
+    // Check if Wallet A accumulated enough to spawn goblins and auto-buy $HOARD
+    setCreatorFees((prev) => {
+      const nextFee = prev + feeA;
+      if (nextFee >= threshold && goblinCount < 300) {
+        const numSpawn = Math.min(300 - goblinCount, Math.floor(nextFee / threshold));
+        for (let i = 0; i < numSpawn; i++) {
+          const spawned = populationSystemRef.current?.spawnOne();
+          if (spawned) {
+            setGoblinCount((c) => Math.min(300, c + 1));
+            setSplitFeeStats((s) => ({ ...s, totalGoblinsSpawned: s.totalGoblinsSpawned + 1 }));
+
+            // Goblins keep buying the token until it migrates to Raydium!
+            if (!isMigrated) {
+              triggerBuyOrder(threshold);
+              addFloatingBubble(`👺 ${spawned.displayName} bought +${threshold} SOL of $HOARD on Pump.fun!`, "buy");
+            } else {
+              // Post-migration: Goblins raid new pairs & Raydium pools!
+              triggerRaid();
+              addFloatingBubble(`⚔️ ${spawned.displayName} recruited · Raiding Raydium pairs!`, "raid");
+            }
+          }
+        }
+        return nextFee % threshold;
+      }
+      return nextFee;
+    });
+
+    addFloatingBubble(`🪙 0.2% Split: +${feeA.toFixed(4)} SOL -> ...gob Wallet`, "buy");
+    setTimeout(() => {
+      addFloatingBubble(`🏦 0.8% Split: +${feeB.toFixed(4)} SOL -> Treasury`, "burn");
+    }, 450);
+
+    setFeedItems((prev) => [
+      {
+        id: `split-${Date.now()}`,
+        type: "goblins",
+        title: "0.2% Fee Routed to Goblin Wallet (...gob)",
+        subtitle: `Wallet A: +${feeA} SOL (Auto-buys $HOARD) · Wallet B: +${feeB} SOL (Treasury)`,
+        amount: `+${amountSol.toFixed(3)} SOL`,
+        isPositive: true,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      },
+      ...prev.slice(0, 24)
+    ]);
+  }, [goblinSpawnThresholdSol, solCurveStats, goblinCount, addFloatingBubble, triggerBuyOrder]);
 
   // Milestone Quick Jumps with Immediate Synchronous World Ascension
   const jumpToMilestone = useCallback((targetMc: number) => {
@@ -647,18 +784,18 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     setIsForceMigrated(null);
 
     const newTier =
-      targetMc < 15000 ? 0 :
-      targetMc < 35000 ? 1 :
-      targetMc < 70000 ? 2 : 3;
+      targetMc < 18000 ? 0 :
+      targetMc < 38000 ? 1 :
+      targetMc < 69000 ? 2 : 3;
 
     // Instantly update 3D group visibilities
     updateTierVisuals(newTier);
 
     const neededGoblins =
-      targetMc <= 4700 ? 3 :
-      targetMc < 15000 ? 8 :
-      targetMc < 35000 ? 18 :
-      targetMc < 70000 ? 32 : 55;
+      targetMc <= 5000 ? 3 :
+      targetMc < 18000 ? 10 :
+      targetMc < 38000 ? 24 :
+      targetMc < 69000 ? 45 : 75;
 
     populationSystemRef.current?.setPopulation(neededGoblins);
     setGoblinCount(neededGoblins);
@@ -667,6 +804,20 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     setBurnedHoard(Math.floor(targetMc * 420));
     addFloatingBubble(`🏰 World Jump: $${(targetMc / 1000).toFixed(0)}k Market Cap!`, "ascend");
   }, [updateTierVisuals, FEE_PER_GOBLIN, addFloatingBubble]);
+
+  // Autonomous Post-Migration Raiding Loop
+  // Once the Pump.fun curve graduates to Raydium, the Warband automatically launches raids on new pairs!
+  useEffect(() => {
+    if (!isMigrated) return;
+    const raidTimer = setInterval(() => {
+      // 65% chance to dispatch a raid to one of the active dungeon pairs
+      if (Math.random() < 0.65) {
+        triggerRaid();
+      }
+    }, 9500);
+
+    return () => clearInterval(raidTimer);
+  }, [isMigrated, triggerRaid]);
 
   // Auto-Simulation Tick (Runs when isSimulating is true)
   useEffect(() => {
@@ -746,8 +897,8 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       id: `fee-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                       type: "goblins",
                       title: `Creator Fee Recruited: ${spawned.displayName}`,
-                      subtitle: `2.5% tax spawned goblin · Buys until migration`,
-                      amount: `+${FEE_PER_GOBLIN} ETH`,
+                      subtitle: `Creator fee spawned goblin · Buys until migration`,
+                      amount: `+${FEE_PER_GOBLIN} SOL`,
                       isPositive: true,
                       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                     },
@@ -760,7 +911,110 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
           }
         }
 
-        // 2. Fetch Token / Curve and Reserves
+        // 2. Fetch Token / Curve and Reserves (Solana Pump.fun & DexScreener Proxy)
+        if (!tokenInput.startsWith("0x") && tokenInput.length >= 32 && tokenInput.length <= 44) {
+          if (prevTokenInputRef.current !== tokenInput) {
+            lastCurveBalanceRef.current = 0;
+            prevTokenInputRef.current = tokenInput;
+          }
+          try {
+            const res = await fetch("/api/solana-pair", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ address: tokenInput })
+            });
+            const data = await res.json();
+
+            if (data?.success && isMounted) {
+              const curveSol = Number(data.realSol || 0);
+              const vSol = Number(data.virtualSol || 85.0);
+              const progress = Number(data.progressPct || 0);
+              const isComplete = Boolean(data.isComplete);
+              const calculatedMc = Number(data.marketCapUsd || 0);
+              const volume = Number(data.volume24h || 1200);
+
+              setSolCurveStats({
+                realSol: Number(curveSol.toFixed(3)),
+                virtualSol: Number(vSol.toFixed(2)),
+                complete: isComplete,
+                progressPct: Number(progress.toFixed(1)),
+                tokenSymbol: data.tokenSymbol,
+                dexName: data.dexName
+              });
+
+              setMarketCap(calculatedMc);
+              setVolume24h(volume);
+              setIsOnchainConnected(true);
+              setOnchainStatusText(
+                data.statusText ||
+                  (isComplete
+                    ? `Graduated to ${data.dexName || "Raydium"} 🚀`
+                    : `Synced (${curveSol.toFixed(2)} SOL in curve)`)
+              );
+
+              if (lastCurveBalanceRef.current === 0 && curveSol > 0) {
+                addFloatingBubble(`🪙 Synced ${curveSol.toFixed(2)} SOL in curve ($${(calculatedMc / 1000).toFixed(1)}K MC)`, "buy");
+              } else if (curveSol > lastCurveBalanceRef.current && lastCurveBalanceRef.current > 0) {
+                const diffSol = curveSol - lastCurveBalanceRef.current;
+                if (diffSol > 0.0005) {
+                  triggerBuyOrder(Number(diffSol.toFixed(3)));
+                  addFloatingBubble(`⚔️ On-chain Buy: +${diffSol.toFixed(3)} SOL`, "buy");
+                  setFeedItems((prev) => [
+                    {
+                      id: `sol-buy-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      type: "traders",
+                      title: `Trader bought ${data.tokenSymbol || "$HOARD"} on Solana`,
+                      subtitle:
+                        data.source === "pump_fun"
+                          ? "Tokens bought on Pump.fun Bonding Curve"
+                          : `Swapped on ${data.dexName || "Solana DEX"}`,
+                      amount: `+${diffSol.toFixed(3)} SOL`,
+                      isPositive: true,
+                      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    },
+                    ...prev.slice(0, 24)
+                  ]);
+                }
+              } else if (curveSol < lastCurveBalanceRef.current && lastCurveBalanceRef.current > 0) {
+                const diffSol = lastCurveBalanceRef.current - curveSol;
+                if (diffSol > 0.0005) {
+                  addFloatingBubble(`🔻 On-chain Sell: -${diffSol.toFixed(3)} SOL`, "burn");
+                  setFeedItems((prev) => [
+                    {
+                      id: `sol-sell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      type: "traders",
+                      title: `Trader sold ${data.tokenSymbol || "$HOARD"} on Solana`,
+                      subtitle:
+                        data.source === "pump_fun"
+                          ? "Tokens returned to Pump.fun curve"
+                          : `Sold on ${data.dexName || "Solana DEX"}`,
+                      amount: `-${diffSol.toFixed(3)} SOL`,
+                      isPositive: false,
+                      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    },
+                    ...prev.slice(0, 24)
+                  ]);
+                }
+              }
+              lastCurveBalanceRef.current = curveSol;
+              return;
+            } else if (isMounted) {
+              setIsOnchainConnected(false);
+              setOnchainStatusText(
+                data?.error || "Token address not found on Solana (Unminted or Invalid CA)"
+              );
+              return;
+            }
+          } catch (e: any) {
+            if (isMounted) {
+              setIsOnchainConnected(false);
+              setOnchainStatusText("Solana API proxy error: " + (e.message || "Failed"));
+              return;
+            }
+          }
+        }
+
+        // 3. Fetch Token / Curve and Reserves (Robinhood Chain EVM)
         if (tokenInput.startsWith("0x") && tokenInput.length === 42) {
           let resolvedCurveAddr: string | null = null;
           const cleanInput = tokenInput.toLowerCase().replace("0x", "").padStart(64, "0");
@@ -869,10 +1123,10 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               setOnchainStatusText("Token/Curve not found on Pons");
             }
           }
-        } else if (tokenInput.length > 0 && tokenInput.length !== 42) {
+        } else if (tokenInput.length > 0 && tokenInput.length !== 42 && (tokenInput.length < 32 || tokenInput.length > 44)) {
           if (isMounted) {
             setIsOnchainConnected(false);
-            setOnchainStatusText(`Invalid address length (${tokenInput.length}/42 chars)`);
+            setOnchainStatusText(`Invalid address length (${tokenInput.length} chars)`);
           }
         }
       } catch (err: any) {
@@ -884,12 +1138,105 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     };
 
     fetchOnchainData();
-    const interval = setInterval(fetchOnchainData, 3500);
+    const pollTime = !liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? 1200 : 3500;
+    const interval = setInterval(fetchOnchainData, pollTime);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
   }, [syncMode, liveTokenAddress, liveCreatorAddress, goblinCount, FEE_PER_GOBLIN, addFloatingBubble, playCoinSound, triggerBuyOrder]);
+
+  // Real-Time Solana EventSource (SSE) stream for sub-second trade syncing
+  useEffect(() => {
+    if (syncMode !== "onchain" || !liveTokenAddress || liveTokenAddress.startsWith("0x") || liveTokenAddress.length < 32 || liveTokenAddress.length > 44) {
+      return;
+    }
+
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(`/api/solana-pair/stream?address=${encodeURIComponent(liveTokenAddress)}`);
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data?.success) {
+            const curveSol = Number(data.realSol || 0);
+            const vSol = Number(data.virtualSol || 85.0);
+            const progress = Number(data.progressPct || 0);
+            const isComplete = Boolean(data.isComplete);
+            const calculatedMc = Number(data.marketCapUsd || 0);
+            const volume = Number(data.volume24h || 1200);
+
+            setSolCurveStats({
+              realSol: Number(curveSol.toFixed(3)),
+              virtualSol: Number(vSol.toFixed(2)),
+              complete: isComplete,
+              progressPct: Number(progress.toFixed(1)),
+              tokenSymbol: data.tokenSymbol,
+              dexName: data.dexName
+            });
+
+            setMarketCap(calculatedMc);
+            setVolume24h(volume);
+            setIsOnchainConnected(true);
+            setOnchainStatusText(
+              data.statusText ||
+                (isComplete
+                  ? `Graduated to ${data.dexName || "Raydium"} 🚀`
+                  : `⚡ Real-Time (${curveSol.toFixed(2)} SOL in curve)`)
+            );
+
+            if (lastCurveBalanceRef.current === 0 && curveSol > 0) {
+              addFloatingBubble(`🪙 Synced ${curveSol.toFixed(2)} SOL in curve ($${(calculatedMc / 1000).toFixed(1)}K MC)`, "buy");
+            } else if (curveSol > lastCurveBalanceRef.current && lastCurveBalanceRef.current > 0) {
+              const diffSol = curveSol - lastCurveBalanceRef.current;
+              if (diffSol > 0.0005) {
+                triggerBuyOrder(Number(diffSol.toFixed(3)));
+                addFloatingBubble(`⚔️ Real-Time Buy: +${diffSol.toFixed(3)} SOL`, "buy");
+                setFeedItems((prev) => [
+                  {
+                    id: `sol-live-buy-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    type: "traders",
+                    title: `Trader bought on Solana`,
+                    subtitle: `Real-time swap on Pump.fun curve`,
+                    amount: `+${diffSol.toFixed(3)} SOL`,
+                    isPositive: true,
+                    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  },
+                  ...prev.slice(0, 24)
+                ]);
+              }
+            } else if (curveSol < lastCurveBalanceRef.current && lastCurveBalanceRef.current > 0) {
+              const diffSol = lastCurveBalanceRef.current - curveSol;
+              if (diffSol > 0.0005) {
+                addFloatingBubble(`🔻 Real-Time Sell: -${diffSol.toFixed(3)} SOL`, "burn");
+                setFeedItems((prev) => [
+                  {
+                    id: `sol-live-sell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    type: "traders",
+                    title: `Trader sold on Solana`,
+                    subtitle: `Tokens returned to Pump.fun curve`,
+                    amount: `-${diffSol.toFixed(3)} SOL`,
+                    isPositive: false,
+                    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  },
+                  ...prev.slice(0, 24)
+                ]);
+              }
+            }
+            lastCurveBalanceRef.current = curveSol;
+          } else if (data?.heartbeat && data?.marketCapUsd) {
+            setMarketCap(data.marketCapUsd);
+            if (data.volume24h) setVolume24h(data.volume24h);
+          }
+        } catch {}
+      };
+    } catch {}
+
+    return () => {
+      if (es) es.close();
+    };
+  }, [syncMode, liveTokenAddress, addFloatingBubble, triggerBuyOrder]);
 
 
   // Camera presets
@@ -3680,9 +4027,8 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
       ))}
 
       {/* Floating 3D Event Notification Bubbles */}
-      <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex flex-col items-center gap-2">
-        {eventBubbles.slice(-3).map((bubble) => {
-          const cleanText = bubble.text.replace(/^[^\w\s+$-]+/, "").trim();
+      <div className="fixed sm:absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 pointer-events-none z-50 flex flex-col items-center gap-2 max-w-[95vw]">
+        {eventBubbles.slice(-4).map((bubble) => {
           const category =
             bubble.type === "burn"
               ? "SACRIFICE"
@@ -3696,14 +4042,14 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
           const bubbleStyle =
             bubble.type === "burn"
-              ? "border-orange-500/60 text-orange-200 shadow-[0_4px_24px_rgba(249,115,22,0.25)]"
+              ? "border-orange-500/80 text-orange-200 bg-orange-950/85 shadow-[0_4px_28px_rgba(249,115,22,0.45)] ring-1 ring-orange-500/30"
               : bubble.type === "raid"
-              ? "border-rose-500/60 text-rose-200 shadow-[0_4px_24px_rgba(244,63,94,0.25)]"
+              ? "border-rose-500/80 text-rose-200 bg-rose-950/85 shadow-[0_4px_28px_rgba(244,63,94,0.45)] ring-1 ring-rose-500/30"
               : bubble.type === "buy"
-              ? "border-amber-400/60 text-amber-200 shadow-[0_4px_24px_rgba(251,191,36,0.25)]"
+              ? "border-amber-400/80 text-amber-200 bg-amber-950/85 shadow-[0_4px_28px_rgba(251,191,36,0.45)] ring-1 ring-amber-400/30"
               : bubble.type === "brain"
-              ? "border-purple-500/60 text-purple-200 shadow-[0_4px_24px_rgba(168,85,247,0.25)]"
-              : "border-yellow-400/70 text-yellow-200 shadow-[0_4px_24px_rgba(250,204,21,0.3)]";
+              ? "border-purple-500/80 text-purple-200 bg-purple-950/85 shadow-[0_4px_28px_rgba(168,85,247,0.45)] ring-1 ring-purple-500/30"
+              : "border-yellow-400/90 text-yellow-100 bg-yellow-950/85 shadow-[0_4px_28px_rgba(250,204,21,0.5)] ring-1 ring-yellow-400/40";
 
           const dotColor =
             bubble.type === "burn"
@@ -3719,15 +4065,15 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
           return (
             <div
               key={bubble.id}
-              className={`animate-float-bubble px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border ${bubbleStyle} flex items-center gap-2 text-xs font-medium tracking-wide shadow-2xl`}
+              className={`animate-float-bubble px-4 py-2 rounded-full backdrop-blur-xl border ${bubbleStyle} flex items-center gap-2.5 text-xs font-semibold tracking-wide shadow-2xl transition-all`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${dotColor} animate-pulse flex-shrink-0`} />
-              <span className="text-[9.5px] uppercase font-bold tracking-[0.08em] opacity-80 flex-shrink-0">
+              <span className={`w-2 h-2 rounded-full ${dotColor} animate-ping flex-shrink-0`} />
+              <span className="text-[9.5px] uppercase font-mono font-bold tracking-[0.1em] opacity-90 flex-shrink-0">
                 {category}
               </span>
-              <span className="w-px h-2.5 bg-white/20 flex-shrink-0" />
-              <span className="font-semibold text-zinc-100 whitespace-nowrap">
-                {cleanText}
+              <span className="w-px h-3 bg-white/20 flex-shrink-0" />
+              <span className="font-mono text-zinc-100 whitespace-nowrap">
+                {bubble.text}
               </span>
             </div>
           );
@@ -3774,7 +4120,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <div>
                     <span className="text-zinc-500 block uppercase font-medium text-[8.5px] tracking-[0.08em]">Loot home</span>
                     <span className="text-amber-300 font-mono font-bold text-[11px] truncate block mt-0.5 tabular-nums">
-                      {hoveredGoblin.lootEth.toFixed(4)} ETH
+                      {hoveredGoblin.lootEth.toFixed(4)} SOL
                     </span>
                   </div>
                 </div>
@@ -3804,26 +4150,14 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       THE HOARD
                     </h1>
                     <span className="text-[9px] font-semibold text-zinc-400 tracking-[0.1em] uppercase mt-0.5">
-                      ROBINHOOD CHAIN
+                      {!liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? "SOLANA MAINNET" : "ROBINHOOD CHAIN"}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* On Mobile (< sm): Compact Utility Strip directly in Header so it NEVER overlaps */}
-                  <div className="flex sm:hidden items-center gap-1.5 p-1 rounded-md bg-white/[0.04] border border-white/10 text-xs">
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
-                      <span className="text-[8.5px] bg-white/5 px-1 py-0.2 rounded border border-white/10 font-bold">CA</span>
-                      <span className="text-[9px] text-zinc-400">
-                        {liveTokenAddress ? `${liveTokenAddress.slice(0, 4)}...${liveTokenAddress.slice(-2)}` : "soon"}
-                      </span>
-                      <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors p-0.5" title="Copy Contract Address">
-                        {copiedCA ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-zinc-500" />}
-                      </button>
-                    </div>
-
-                    <div className="w-px h-3 bg-white/10" />
-
+                  {/* On Mobile (< sm): Compact Utility Strip directly in Header */}
+                  <div className="flex sm:hidden items-center gap-2 p-1 rounded-md bg-white/[0.04] border border-white/10 text-xs">
                     <a
                       href="https://x.com/hoardedfun"
                       target="_blank"
@@ -3834,17 +4168,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       𝕏
                     </a>
 
-                    <a
-                      href="https://t.me/hoardedfun"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-zinc-400 hover:text-[#229ED9] p-0.5"
-                      title="Telegram (@hoardedfun)"
-                    >
-                      <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.943z"/>
-                      </svg>
-                    </a>
+                    <div className="w-px h-3 bg-white/10" />
 
                     <button
                       onClick={toggleAudio}
@@ -4052,7 +4376,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   LOOT
                 </span>
                 <span className="text-sm font-bold text-amber-300 font-mono tabular-nums leading-tight mt-1">
-                  {goblinBuysEth.toFixed(2)} ETH
+                  {goblinBuysEth.toFixed(2)} {!liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? "SOL" : "ETH"}
                 </span>
                 <span className="text-[9.5px] text-zinc-500 font-mono mt-0.5">
                   into $HOARD
@@ -4082,7 +4406,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   NEXT SPAWN
                 </span>
                 <span className="text-sm font-bold text-zinc-200 font-mono tabular-nums leading-tight mt-1">
-                  {feeRemainder.toFixed(4)} ETH
+                  {feeRemainder.toFixed(4)} {!liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? "SOL" : "ETH"}
                 </span>
                 <span className="text-[9.5px] text-zinc-500 font-mono mt-0.5">
                   {nextGoblinPercent}% of threshold
@@ -4130,10 +4454,12 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   </button>
                 </div>
 
-                {/* Robinhood Chain Wallet Box */}
+                {/* Multi-Chain Wallet Box */}
                 <div className="glass-panel-sub rounded p-2 flex flex-col gap-1">
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-[9px] uppercase tracking-[0.08em] text-zinc-400 font-semibold">ROBINHOOD CHAIN · 4663</span>
+                    <span className="text-[9px] uppercase tracking-[0.08em] text-zinc-400 font-semibold">
+                      {selectedGoblin.walletAddress.startsWith("0x") ? "ROBINHOOD CHAIN · 4663" : "SOLANA MAINNET"}
+                    </span>
                     <div className="flex items-center gap-2 font-mono">
                       <button
                         onClick={() => handleCopyWallet(selectedGoblin.walletAddress)}
@@ -4152,7 +4478,11 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                         )}
                       </button>
                       <a
-                        href={`https://robinhoodchain.blockscout.com/address/${selectedGoblin.walletAddress}`}
+                        href={
+                          selectedGoblin.walletAddress.startsWith("0x")
+                            ? `https://robinhoodchain.blockscout.com/address/${selectedGoblin.walletAddress}`
+                            : `https://solscan.io/account/${selectedGoblin.walletAddress}`
+                        }
                         target="_blank"
                         rel="noreferrer"
                         className="text-zinc-400 hover:text-white flex items-center gap-0.5 font-semibold hover:underline text-[9.5px]"
@@ -4203,7 +4533,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <div className="flex flex-col border-x border-white/[0.06]">
                     <span className="text-zinc-500 uppercase text-[8.5px] font-medium tracking-[0.08em]">Loot home</span>
                     <span className="text-amber-300 font-mono font-bold text-xs mt-0.5 truncate tabular-nums">
-                      {(selectedGoblin.strategyDNA?.totalLootEth ?? (0.005 + (selectedGoblin.balance / 10000) * 0.015)).toFixed(4)} ETH
+                      {(selectedGoblin.strategyDNA?.totalLootEth ?? (0.005 + (selectedGoblin.balance / 10000) * 0.015)).toFixed(4)} SOL
                     </span>
                   </div>
                   <div className="flex flex-col">
@@ -4215,7 +4545,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <div className="flex flex-col pt-1.5 border-t border-white/[0.06]">
                     <span className="text-zinc-500 uppercase text-[8.5px] font-medium tracking-[0.08em]">Bought</span>
                     <span className="text-zinc-300 font-mono font-bold text-xs mt-0.5 truncate tabular-nums">
-                      {((selectedGoblin.balance / 10000) * 0.02).toFixed(3)} ETH
+                      {((selectedGoblin.balance / 10000) * 0.02).toFixed(3)} SOL
                     </span>
                   </div>
                   <div className="flex flex-col pt-1.5 border-t border-x border-white/[0.06]">
@@ -4256,7 +4586,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                         stroke="#f59e0b"
                         strokeWidth="1.5"
                         strokeLinecap="round"
-                      />
+                        />
                     </svg>
                   </div>
                 </div>
@@ -4267,7 +4597,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                   <div className="flex flex-col gap-0.5 font-mono text-[10.5px]">
                     <div className="p-1.5 rounded glass-panel-sub flex items-center justify-between">
                       <span className="text-zinc-300 font-sans">Pillaged Crypt of Memes</span>
-                      <span className="text-emerald-400 font-bold tabular-nums">+0.0084 ETH</span>
+                      <span className="text-emerald-400 font-bold tabular-nums">+0.0084 SOL</span>
                     </div>
                     <div className="p-1.5 rounded glass-panel-sub flex items-center justify-between">
                       <span className="text-zinc-300 font-sans">Bought $HOARD on LP</span>
@@ -4373,7 +4703,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       <div className="flex flex-col">
                         <span className="text-[8.5px] text-zinc-400 font-sans font-semibold">Tribute pool</span>
                         <span className="text-xs font-bold text-amber-300 mt-0.5 tabular-nums">
-                          {creatorFees.toFixed(4)} ETH
+                          {creatorFees.toFixed(4)} SOL
                         </span>
                       </div>
                       <div className="flex flex-col border-x border-white/[0.06]">
@@ -4383,7 +4713,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                       <div className="flex flex-col">
                         <span className="text-[8.5px] text-zinc-400 font-sans font-semibold">Hatch cost</span>
                         <span className="text-xs font-bold text-zinc-300 mt-0.5 tabular-nums">
-                          {FEE_PER_GOBLIN.toFixed(4)} ETH
+                          {goblinSpawnThresholdSol.toFixed(4)} SOL
                         </span>
                       </div>
                     </div>
@@ -4403,18 +4733,22 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
 
                       <div className="p-2 rounded glass-panel-sub text-[10px] text-zinc-400 leading-relaxed">
                         {goblinCount === 0
-                          ? `The first goblin spawns when the High Chieftain has collected ${FEE_PER_GOBLIN.toFixed(4)} ETH tribute.`
+                          ? `The first goblin spawns when the High Chieftain has collected ${goblinSpawnThresholdSol.toFixed(4)} SOL tribute.`
                           : `Active horde of ${goblinCount} autonomous goblins raiding and acquiring $HOARD.`}
                       </div>
 
                       <a
-                        href={`https://ponsfamily.com/token/${liveTokenAddress || "0xD41d83f9b1dF9D15766f353B709ca0a96fb8d6c9"}`}
+                        href={
+                          isMigrated
+                            ? `https://raydium.io/swap/?inputMint=sol&outputMint=${liveTokenAddress}`
+                            : `https://pump.fun/coin/${liveTokenAddress}`
+                        }
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-2 rounded bg-amber-600 hover:bg-amber-500 text-black font-bold text-xs tracking-wider uppercase transition-colors shadow-md flex items-center justify-center gap-1.5"
+                        className="w-full py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs tracking-wider uppercase transition-colors shadow-md flex items-center justify-center gap-1.5"
                       >
                         <Coins className="w-3.5 h-3.5" />
-                        <span>Acquire $HOARD on PonsFamily</span>
+                        <span>{isMigrated ? "Trade $HOARD on Raydium" : "Acquire $HOARD on Pump.fun"}</span>
                       </a>
                     </div>
                   </div>
@@ -4619,12 +4953,12 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               {/* Contextual Step Subtitle */}
               <div className="text-[8.5px] sm:text-[9.5px] text-zinc-400 text-center truncate">
                 {currentTier === 0
-                  ? "At $12.0K Market Cap: Warband gathers, Chieftain Keep fortified & Crypt unsealed"
+                  ? "At $18.0K Market Cap (~20 SOL): Warband gathers, Chieftain Keep fortified & Crypt unsealed"
                   : currentTier === 1
-                  ? "At $25.0K Market Cap: Castle expands & Dragon's Chasm awakens"
+                  ? "At $38.0K Market Cap (~45 SOL): Castle expands & Dragon's Chasm awakens"
                   : currentTier === 2
-                  ? "At $40.0K Market Cap: Bonding Curve Graduates & Migrates to DEX — Full Warband Unleashed"
-                  : "At $100.0K Market Cap: The Citadel Ascends — Golden Realm & Legendary Status"}
+                  ? "At $69.0K Market Cap (85 SOL): Bonding Curve Graduates & Migrates to Raydium — Multi-Pair Raiding Unleashed"
+                  : "At $150.0K+ Market Cap: The Citadel Ascends — Golden Realm & Multi-Pool Conqueror"}
               </div>
             </div>
           </div>
@@ -4794,200 +5128,515 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
               </span>
             </div>
 
-            {/* Sandbox Gated for Production Ship */}
-            {process.env.NEXT_PUBLIC_ENABLE_SANDBOX === "true" && (
-              <button
-                onClick={() => setShowSimulator((p) => !p)}
-                className="px-3 py-1.5 rounded-lg glass-panel border border-white/10 text-zinc-300 hover:text-white font-sans text-xs font-semibold flex items-center gap-1.5 shadow-xl transition-colors"
-              >
-                <Dices className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Sandbox {showSimulator ? "▲" : "▼"}</span>
-              </button>
-            )}
           </div>
 
-          {/* SIMULATION CONTROLLER PANEL (DEV ONLY) */}
-          {process.env.NEXT_PUBLIC_ENABLE_SANDBOX === "true" && showSimulator && (
-            <div className="absolute bottom-16 left-4 z-40 w-[300px] rounded-lg glass-panel p-3 flex flex-col gap-2 font-sans">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-1.5">
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-[0.08em] flex items-center gap-1.5">
-                  <Dices className="w-3.5 h-3.5" />
-                  <span>SIMULATION SANDBOX</span>
+          {/* SOLANA PUMP.FUN SANDBOX & LIVE PAIR TESTER */}
+          {showSimulator && (
+            <div className="absolute bottom-16 left-4 z-40 w-[320px] sm:w-[360px] max-h-[82vh] overflow-y-auto rounded-xl glass-panel p-3.5 flex flex-col gap-2.5 font-sans border border-amber-500/30 shadow-2xl backdrop-blur-xl">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+                <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-[0.08em] flex items-center gap-1.5">
+                  <span className="text-amber-400">🧪</span>
+                  <span>SOLANA PUMP.FUN SANDBOX</span>
                 </span>
                 <button
                   onClick={() => setIsSimulating((p) => !p)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono transition-colors ${
                     isSimulating
                       ? "bg-emerald-600 text-white"
                       : "bg-white/10 text-zinc-300 hover:text-white"
                   }`}
+                  title="Toggle offline sandbox simulation"
                 >
-                  {isSimulating ? "PAUSE" : "START"}
+                  {isSimulating ? "PAUSE SIM" : "OFFLINE SIM"}
                 </button>
               </div>
 
-              {/* Migration Phase Switcher */}
-              <div className="flex items-center justify-between text-[10px] glass-panel-sub p-1.5 rounded">
-                <span className="text-zinc-400">Phase:</span>
+              {/* Live On-Chain Connection Mode Switcher */}
+              <div className="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-white/10 font-mono text-[9.5px]">
                 <button
-                  onClick={() => setIsForceMigrated((p) => (p === null ? !isMigrated : !p))}
-                  className={`px-2 py-0.5 rounded font-mono font-semibold text-[9.5px] transition-colors flex items-center gap-1 ${
-                    isMigrated
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                      : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                  onClick={() => {
+                    setSyncMode("simulation");
+                    setIsOnchainConnected(false);
+                    setOnchainStatusText("Standby (Simulation Mode)");
+                  }}
+                  className={`flex-1 py-1 rounded text-center font-bold transition-all ${
+                    syncMode === "simulation"
+                      ? "bg-white/20 text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
                   }`}
-                  title="Toggle pre-migration gathering vs post-migration warband"
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${isMigrated ? "bg-rose-400" : "bg-amber-400"}`} />
-                  <span>{isMigrated ? "Warband Out" : "Gathering ($HOARD)"}</span>
+                  SIMULATION
+                </button>
+                <button
+                  onClick={() => {
+                    setSyncMode("onchain");
+                  }}
+                  className={`flex-1 py-1 rounded text-center font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    syncMode === "onchain"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  LIVE ONCHAIN
                 </button>
               </div>
 
-              {/* Speed Buttons */}
-              <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                <span className="font-sans">Speed:</span>
-                <div className="flex items-center gap-1 font-mono">
-                  {([1, 2, 5] as const).map((sp) => (
+              {/* Live Status indicator */}
+              <div className="flex items-center justify-between text-[9px] bg-black/40 px-2.5 py-1.5 rounded-md border border-white/5">
+                <span className="text-zinc-400 font-mono">Sync Status:</span>
+                <span className={`font-mono font-semibold truncate max-w-[210px] ${isOnchainConnected ? "text-emerald-400" : "text-amber-400"}`}>
+                  {onchainStatusText}
+                </span>
+              </div>
+
+              {/* Unminted / Missing On-Chain CA Alert */}
+              {!isOnchainConnected && liveTokenAddress && syncMode === "onchain" && (
+                <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-[9px] text-amber-200 flex flex-col gap-1.5 font-mono shadow-inner">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <span>⚠️</span>
+                    <span>Pair / Mint Not Initialized On-Chain</span>
+                  </div>
+                  <p className="text-[8.5px] text-zinc-300 leading-relaxed">
+                    CA <span className="text-amber-200 font-semibold">{liveTokenAddress.slice(0, 6)}...{liveTokenAddress.slice(-4)}</span> has no active bonding curve or on-chain history on Solana Mainnet yet. It must be created and minted first.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setLiveTokenAddress("9JeFE6apEvFotefu1ocjWgSceEc3LG1LhgMxQNB4pump");
+                      setSyncMode("onchain");
+                      addFloatingBubble("⚡ Loaded verified active pair 9JeFE6...pump", "buy");
+                    }}
+                    className="w-full py-1.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-bold text-[8.5px] border border-amber-500/30 transition-all text-center flex items-center justify-center gap-1"
+                  >
+                    <span>⚡ Click to test verified active pair (9JeFE6...pump)</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Active Solana Curve Progress Card */}
+              {solCurveStats && (
+                <div className="glass-panel-sub p-2.5 rounded-lg flex flex-col gap-1.5 border border-emerald-500/20 bg-emerald-950/20">
+                  <div className="flex items-center justify-between text-[9.5px]">
+                    <span className="text-zinc-300 font-medium">Bonding Curve Liquidity:</span>
+                    <span className="text-emerald-400 font-bold font-mono">
+                      {solCurveStats.realSol.toFixed(2)} / 85.0 SOL
+                    </span>
+                  </div>
+                  {/* Visual Progress Bar */}
+                  <div className="w-full bg-black/70 h-2 rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 via-lime-400 to-amber-300 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, solCurveStats.progressPct)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[8.5px] text-zinc-400 font-mono">
+                    <span>{solCurveStats.progressPct}% to Raydium Migration</span>
+                    <span className={solCurveStats.complete ? "text-emerald-300 font-bold" : "text-amber-300 font-semibold"}>
+                      {solCurveStats.complete ? "🚀 MIGRATED" : "IN PROGRESS"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* PASTE NEW PUMP.FUN PAIR SECTION */}
+              <div className="flex flex-col gap-1.5 bg-black/30 p-2.5 rounded-lg border border-white/10">
+                <div className="flex items-center justify-between text-[9.5px]">
+                  <span className="text-zinc-300 font-semibold uppercase tracking-wider">
+                    Test Live Pump.fun Pair:
+                  </span>
+                  <button
+                    onClick={handlePasteSolanaCA}
+                    className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono text-[9px] hover:underline bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
+                    title="Paste token CA from clipboard"
+                  >
+                    <Copy className="w-2.5 h-2.5" />
+                    <span>Paste CA</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="Paste Solana Mint CA (Base58 ...pump)"
+                    value={liveTokenAddress}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      setLiveTokenAddress(val);
+                      if (val.length >= 32 && val.length <= 44) {
+                        setSyncMode("onchain");
+                      }
+                    }}
+                    className="flex-1 bg-black/60 border border-white/10 rounded px-2.5 py-1 text-[9.5px] font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/60"
+                  />
+                  {liveTokenAddress && (
                     <button
-                      key={sp}
-                      onClick={() => setSimSpeed(sp)}
-                      className={`px-2 py-0.5 rounded font-bold ${
-                        simSpeed === sp ? "bg-white/20 text-white" : "bg-white/5 text-zinc-400 hover:text-white"
-                      }`}
+                      onClick={() => {
+                        setLiveTokenAddress("");
+                        setSolCurveStats(null);
+                      }}
+                      className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-[9.5px] font-mono"
+                      title="Clear"
                     >
-                      {sp}x
+                      ✕
                     </button>
-                  ))}
+                  )}
+                </div>
+
+                {/* External Explorer Links for current pair */}
+                {liveTokenAddress && !liveTokenAddress.startsWith("0x") && (
+                  <div className="flex items-center justify-between text-[8.5px] font-mono text-zinc-400 pt-1 border-t border-white/5">
+                    <a
+                      href={`https://pump.fun/coin/${liveTokenAddress}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-amber-300 underline flex items-center gap-0.5"
+                    >
+                      <span>Pump.fun</span>
+                      <ExternalLink className="w-2 h-2" />
+                    </a>
+                    <a
+                      href={`https://dexscreener.com/solana/${liveTokenAddress}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-lime-300 underline flex items-center gap-0.5"
+                    >
+                      <span>DexScreener</span>
+                      <ExternalLink className="w-2 h-2" />
+                    </a>
+                    <a
+                      href={`https://solscan.io/token/${liveTokenAddress}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-sky-300 underline flex items-center gap-0.5"
+                    >
+                      <span>Solscan</span>
+                      <ExternalLink className="w-2 h-2" />
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* QUICK-LOAD VERIFIED TEST PAIRS */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[8.5px] text-zinc-400 uppercase font-semibold tracking-wider">
+                  Quick-Load Live Test Pairs:
+                </span>
+                <div className="grid grid-cols-2 gap-1.5 text-[8.5px] font-mono">
+                  <button
+                    onClick={() => {
+                      setLiveTokenAddress("9JeFE6apEvFotefu1ocjWgSceEc3LG1LhgMxQNB4pump");
+                      setSyncMode("onchain");
+                      addFloatingBubble("⚡ Loaded 9JeFE6...pump", "buy");
+                    }}
+                    className="p-1.5 rounded-md glass-panel-sub hover:border-emerald-500/40 hover:bg-emerald-500/10 text-zinc-300 text-left truncate transition-colors flex items-center justify-between"
+                    title="9JeFE6apEvFotefu1ocjWgSceEc3LG1LhgMxQNB4pump (Active 4.67 SOL Curve)"
+                  >
+                    <span>⚡ 9JeFE6...pump</span>
+                    <span className="text-[8px] text-emerald-400 font-bold">ACTIVE</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLiveTokenAddress("2NuZgtFu1mapWrG463skJSgoqHEJN59Cm4F4VR2qpump");
+                      setSyncMode("onchain");
+                      addFloatingBubble("⚡ Loaded 2NuZgt...pump", "buy");
+                    }}
+                    className="p-1.5 rounded-md glass-panel-sub hover:border-emerald-500/40 hover:bg-emerald-500/10 text-zinc-300 text-left truncate transition-colors flex items-center justify-between"
+                    title="2NuZgtFu1mapWrG463skJSgoqHEJN59Cm4F4VR2qpump ($YES · $144k 24h Vol)"
+                  >
+                    <span>⚡ 2NuZgt...pump</span>
+                    <span className="text-[8px] text-amber-400 font-bold">$YES</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLiveTokenAddress("4VmQUatnfUabKLegfNUQ4FGDZckrfehR3vAFDaYDpump");
+                      setSyncMode("onchain");
+                      addFloatingBubble("⚡ Loaded 4VmQUa...pump", "buy");
+                    }}
+                    className="p-1.5 rounded-md glass-panel-sub hover:border-emerald-500/40 hover:bg-emerald-500/10 text-zinc-300 text-left truncate transition-colors flex items-center justify-between"
+                    title="4VmQUatnfUabKLegfNUQ4FGDZckrfehR3vAFDaYDpump"
+                  >
+                    <span>⚡ 4VmQUa...pump</span>
+                    <span className="text-[8px] text-sky-400 font-bold">AI COIN</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLiveTokenAddress("GicxSBiZPMuGEUBmDDqhg2yrxgjDCY1Euof83Gi8pump");
+                      setSyncMode("onchain");
+                      addFloatingBubble("⚡ Loaded GicxSB...pump", "buy");
+                    }}
+                    className="p-1.5 rounded-md glass-panel-sub hover:border-emerald-500/40 hover:bg-emerald-500/10 text-zinc-300 text-left truncate transition-colors flex items-center justify-between"
+                    title="GicxSBiZPMuGEUBmDDqhg2yrxgjDCY1Euof83Gi8pump"
+                  >
+                    <span>⚡ GicxSB...pump</span>
+                    <span className="text-[8px] text-emerald-400 font-bold">LIVE</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Milestone Quick Jumps */}
-              <div className="flex flex-col gap-1 text-[9px]">
-                <span className="text-zinc-500 uppercase tracking-wider font-semibold">Preview Milestone:</span>
-                <div className="grid grid-cols-4 gap-1 font-mono">
+              {/* LIVE TRENDING PUMP PAIRS (DexScreener API) */}
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={fetchRecentSolanaTokens}
+                  disabled={isLoadingRecentTokens}
+                  className="w-full py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-center font-mono font-semibold text-[8.5px] transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>{isLoadingRecentTokens ? "Fetching Trending Solana Coins..." : "🌐 Fetch Live Trending Pump.fun Coins"}</span>
+                </button>
+
+                {recentSolTokens.length > 0 && (
+                  <div className="grid grid-cols-2 gap-1 text-[8px] font-mono">
+                    {recentSolTokens.map((t) => (
+                      <button
+                        key={t.address}
+                        onClick={() => {
+                          setLiveTokenAddress(t.address);
+                          setSyncMode("onchain");
+                          addFloatingBubble(`⚡ Loaded ${t.address.slice(0, 6)}...`, "buy");
+                        }}
+                        className="p-1 rounded glass-panel-sub hover:border-amber-500/40 hover:bg-amber-500/10 text-zinc-300 text-left truncate transition-colors flex items-center gap-1"
+                        title={t.address}
+                      >
+                        <span className="text-amber-400">🔥</span>
+                        <span className="truncate">{t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* PUMP.FUN CREATOR FEE SPLITTER & GOBLIN AUTO-BUYER (0.2% / 0.8%) */}
+              <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.08] bg-black/40 p-2.5 rounded-lg border border-amber-500/25">
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                    <span>⚖️</span>
+                    <span>Fee Splitter &amp; Goblin Auto-Buyer</span>
+                  </span>
+                  <span className="text-[7.5px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
+                    0.2% / 0.8% SPLIT
+                  </span>
+                </div>
+
+                {/* Auto-Buyer Status Banner */}
+                <div className={`p-1.5 rounded text-[8px] font-mono flex items-center justify-between border ${
+                  solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0)
+                    ? "bg-purple-950/40 border-purple-500/30 text-purple-200"
+                    : "bg-emerald-950/40 border-emerald-500/30 text-emerald-200"
+                }`}>
+                  <span className="flex items-center gap-1 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span>
+                      {solCurveStats?.complete || (solCurveStats?.realSol && solCurveStats.realSol >= 85.0)
+                        ? "MIGRATED TO RAYDIUM 🚀"
+                        : "GOBLINS BUYING UNTIL MIGRATION"}
+                    </span>
+                  </span>
+                  <span className="text-zinc-400">Target: 85 SOL</span>
+                </div>
+
+                <div className="flex flex-col gap-1.5 text-[8.5px] font-mono">
+                  {/* Wallet A: Goblin Vanity Wallet (...gob) */}
+                  <div className="flex flex-col gap-1 bg-black/50 p-2 rounded border border-emerald-500/20">
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        <span>👺</span>
+                        <span>Wallet A (0.2% · Warband ...gob):</span>
+                      </span>
+                      <span className="text-emerald-400 font-bold font-mono">
+                        +{splitFeeStats.walletASol.toFixed(4)} SOL
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={splitWalletA}
+                        onChange={(e) => setSplitWalletA(e.target.value.trim())}
+                        className="flex-1 bg-black/60 border border-white/10 rounded px-1.5 py-0.5 text-[8px] text-zinc-200 font-mono"
+                        title="Vanity Goblin Wallet ending in ...gob"
+                      />
+                      <a
+                        href={`https://solscan.io/account/${splitWalletA}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1 rounded bg-white/5 hover:bg-white/10 text-emerald-400 text-[8px] flex items-center"
+                        title="View on Solscan"
+                      >
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    </div>
+                    <span className="text-[7.5px] text-zinc-400">
+                      Auto-buys $HOARD on curve whenever threshold is reached!
+                    </span>
+                  </div>
+
+                  {/* Spawn Threshold Configurator */}
+                  <div className="flex flex-col gap-1 bg-black/40 p-1.5 rounded border border-white/5">
+                    <div className="flex items-center justify-between text-[8px] text-zinc-300 font-medium">
+                      <span>Goblin Spawn Threshold:</span>
+                      <span className="text-amber-400 font-bold">{goblinSpawnThresholdSol} SOL (~${(goblinSpawnThresholdSol * 160).toFixed(2)})</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 text-[7.5px]">
+                      <button
+                        onClick={() => setGoblinSpawnThresholdSol(0.002)}
+                        className={`py-1 rounded font-bold transition-all ${
+                          goblinSpawnThresholdSol === 0.002
+                            ? "bg-amber-500 text-black shadow"
+                            : "bg-white/5 hover:bg-white/10 text-zinc-300"
+                        }`}
+                        title="Rapid army: spawns ~300 goblins across curve"
+                      >
+                        0.002 SOL (Army)
+                      </button>
+                      <button
+                        onClick={() => setGoblinSpawnThresholdSol(0.005)}
+                        className={`py-1 rounded font-bold transition-all ${
+                          goblinSpawnThresholdSol === 0.005
+                            ? "bg-amber-500 text-black shadow"
+                            : "bg-white/5 hover:bg-white/10 text-zinc-300"
+                        }`}
+                        title="Optimal balanced: steady spawns and low gas (~120 spawns)"
+                      >
+                        0.005 SOL ⭐
+                      </button>
+                      <button
+                        onClick={() => setGoblinSpawnThresholdSol(0.030)}
+                        className={`py-1 rounded font-bold transition-all ${
+                          goblinSpawnThresholdSol === 0.030
+                            ? "bg-amber-500 text-black shadow"
+                            : "bg-white/5 hover:bg-white/10 text-zinc-300"
+                        }`}
+                        title="Heavy chunks: spawns ~15-20 larger goblins"
+                      >
+                        0.030 SOL (Heavy)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Wallet B (0.8% / 80% Treasury) */}
+                  <div className="flex flex-col gap-0.5 bg-black/50 p-1.5 rounded border border-white/5">
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span className="text-orange-400 font-bold">Wallet B (0.8% · Altar Treasury):</span>
+                      <span className="text-orange-400 font-bold font-mono">+{splitFeeStats.walletBSol.toFixed(4)} SOL</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={splitWalletB}
+                      onChange={(e) => setSplitWalletB(e.target.value.trim())}
+                      className="bg-black/60 border border-white/10 rounded px-1.5 py-0.5 text-[8px] text-zinc-300 font-mono"
+                      title="Wallet B address"
+                    />
+                  </div>
+                </div>
+
+                {/* Split Action Buttons */}
+                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                  <button
+                    onClick={() => simulateFeeSplit(0.05)}
+                    className="py-1.5 rounded bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-mono font-bold text-[8.5px] shadow-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    title="Simulate 0.05 SOL incoming fee split: 0.01 SOL (0.2%) to Goblin Wallet, 0.04 SOL (0.8%) to Treasury"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-300" />
+                    <span>Split +0.05 SOL</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const threshold = goblinSpawnThresholdSol;
+                      const spawned = populationSystemRef.current?.spawnOne();
+                      if (spawned) {
+                        setGoblinCount((c) => Math.min(300, c + 1));
+                        triggerBuyOrder(threshold);
+                        addFloatingBubble(`👺 ${spawned.displayName} Spawned & Bought +${threshold} SOL`, "buy");
+                      }
+                    }}
+                    className="py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-mono font-bold text-[8.5px] shadow-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    title="Simulate 1 goblin recruiting and immediately executing an on-chain buy order"
+                  >
+                    <Coins className="w-3 h-3 text-emerald-300" />
+                    <span>Spawn &amp; Buy</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Simulation Manual Event Triggers (Live Bubble Testers) */}
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-white/[0.08]">
+                <div className="flex items-center justify-between text-[8.5px] text-zinc-400 uppercase tracking-wider font-semibold">
+                  <span>Manual 3D World Triggers:</span>
+                  <div className="flex items-center gap-1 font-mono">
+                    {([1, 2, 5] as const).map((sp) => (
+                      <button
+                        key={sp}
+                        onClick={() => setSimSpeed(sp)}
+                        className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                          simSpeed === sp ? "bg-white/20 text-white" : "bg-white/5 text-zinc-400"
+                        }`}
+                      >
+                        {sp}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1 text-[9px] font-mono">
+                  <button
+                    onClick={() => {
+                      triggerBuyOrder(0.25);
+                      addFloatingBubble("⚔️ Buy +0.250 SOL ($HOARD)", "buy");
+                    }}
+                    className="py-1.5 rounded bg-emerald-800/80 hover:bg-emerald-700 text-white font-semibold text-center flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    title="Simulate live buy trade"
+                  >
+                    <Coins className="w-3 h-3 text-emerald-300" />
+                    <span>+0.25 SOL</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      triggerPyreBurnEffect(15000);
+                      addFloatingBubble("🔻 Sell -0.100 SOL (At Pyre)", "burn");
+                    }}
+                    className="py-1.5 rounded bg-orange-800/80 hover:bg-orange-700 text-white font-semibold text-center flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    title="Simulate live sell trade"
+                  >
+                    <Flame className="w-3 h-3 text-orange-300" />
+                    <span>-0.10 SOL</span>
+                  </button>
+                  <button
+                    onClick={() => triggerRaid()}
+                    className="py-1.5 rounded bg-rose-800/80 hover:bg-rose-700 text-white font-semibold text-center flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    title="Simulate goblin dungeon raid"
+                  >
+                    <Swords className="w-3 h-3 text-rose-300" />
+                    <span>Raid Target</span>
+                  </button>
+                </div>
+
+                {/* Milestone Quick Jumps */}
+                <div className="grid grid-cols-4 gap-1 font-mono text-[8px] pt-1">
                   <button
                     onClick={() => jumpToMilestone(4700)}
                     className="p-1 rounded glass-panel-sub hover:border-white/20 text-zinc-300 text-center font-bold"
                   >
-                    $4.7K (T0)
+                    $4.7K T0
                   </button>
                   <button
                     onClick={() => jumpToMilestone(15000)}
                     className="p-1 rounded glass-panel-sub hover:border-white/20 text-zinc-300 text-center font-bold"
                   >
-                    $15K (T1)
+                    $15K T1
                   </button>
                   <button
                     onClick={() => jumpToMilestone(35000)}
                     className="p-1 rounded glass-panel-sub hover:border-white/20 text-zinc-300 text-center font-bold"
                   >
-                    $35K (T2)
+                    $35K T2
                   </button>
                   <button
                     onClick={() => jumpToMilestone(70000)}
                     className="p-1 rounded glass-panel-sub hover:border-white/20 text-zinc-300 text-center font-bold"
                   >
-                    $70K (T3)
+                    $70K T3
                   </button>
                 </div>
-              </div>
-
-              {/* Manual Event Triggers */}
-              <div className="grid grid-cols-3 gap-1 pt-1 border-t border-white/[0.08] text-[10px] font-mono">
-                <button
-                  onClick={() => triggerRaid()}
-                  className="py-1 rounded bg-rose-800/60 hover:bg-rose-700 text-white font-semibold text-center flex items-center justify-center gap-1"
-                >
-                  <Swords className="w-3 h-3" />
-                  <span>Raid</span>
-                </button>
-                <button
-                  onClick={() => triggerBuyOrder(0.003)}
-                  className="py-1 rounded bg-emerald-800/60 hover:bg-emerald-700 text-white font-semibold text-center flex items-center justify-center gap-1"
-                >
-                  <Coins className="w-3 h-3" />
-                  <span>Buy</span>
-                </button>
-                <button
-                  onClick={() => triggerPyreBurnEffect(10000)}
-                  className="py-1 rounded bg-orange-800/60 hover:bg-orange-700 text-white font-semibold text-center flex items-center justify-center gap-1"
-                >
-                  <Flame className="w-3 h-3" />
-                  <span>Burn</span>
-                </button>
-              </div>
-
-              {/* Data Source Mode & Live RPC Testing */}
-              <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/[0.08] text-[9.5px]">
-                {/* Mode Switcher */}
-                <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded border border-white/10 font-mono text-[9px]">
-                  <button
-                    onClick={() => {
-                      setSyncMode("simulation");
-                      setIsOnchainConnected(false);
-                      setOnchainStatusText("Standby");
-                    }}
-                    className={`flex-1 py-0.5 rounded text-center font-bold transition-colors ${
-                      syncMode === "simulation"
-                        ? "bg-white/20 text-white shadow-sm"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    SIMULATION
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSyncMode("onchain");
-                    }}
-                    className={`flex-1 py-0.5 rounded text-center font-bold transition-colors flex items-center justify-center gap-1 ${
-                      syncMode === "onchain"
-                        ? "bg-emerald-600/80 text-white shadow-sm"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    LIVE ONCHAIN
-                  </button>
-                </div>
-
-                {/* Status indicator */}
-                <div className="flex items-center justify-between text-[8.5px]">
-                  <span className="text-zinc-400">Pons V2 Sync Status:</span>
-                  <span className={`font-mono font-semibold ${isOnchainConnected ? "text-emerald-400" : "text-amber-400"}`}>
-                    {onchainStatusText}
-                  </span>
-                </div>
-
-                {/* 1-Click Load Test Token Button */}
-                <button
-                  onClick={() => {
-                    setLiveTokenAddress("0xf8b931b2c1b04CE9aD496189bb0686A09Fcd6D5B");
-                    setSyncMode("onchain");
-                  }}
-                  className="w-full py-1 rounded bg-lime-500/10 hover:bg-lime-500/20 text-lime-400 border border-lime-500/30 text-center font-mono font-semibold text-[8.5px] transition-colors"
-                  title="Load verified Pons V2 token ($TOKEM) with active bonding curve"
-                >
-                  ⚡ Load Verified Pons Token ($TOKEM)
-                </button>
-
-                <input
-                  type="text"
-                  placeholder="Test Token CA (0x... 42 chars)"
-                  value={liveTokenAddress}
-                  onChange={(e) => {
-                    const val = e.target.value.trim();
-                    setLiveTokenAddress(val);
-                    if (val.length === 42) setSyncMode("onchain");
-                  }}
-                  className="w-full bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[9px] font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-lime-500/50"
-                />
-                <input
-                  type="text"
-                  placeholder="Fee Escrow Target (0x... 42 chars)"
-                  value={liveCreatorAddress}
-                  onChange={(e) => setLiveCreatorAddress(e.target.value.trim())}
-                  className="w-full bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[9px] font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-lime-500/50"
-                />
               </div>
             </div>
           )}
@@ -4995,28 +5644,6 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
           {/* 8. DESKTOP UTILITY BAR (Bottom right on desktop; hidden on mobile since integrated in header) */}
           <div className="hidden sm:flex absolute bottom-4 right-4 z-30 pointer-events-auto items-center gap-2">
             <div className="rounded-lg glass-panel px-3 py-1.5 flex items-center gap-2.5 font-sans text-xs shadow-xl">
-              <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
-                <span className="text-[9px] font-mono text-zinc-400 bg-white/5 px-1 py-0.5 rounded border border-white/10 font-bold">CA</span>
-                {liveTokenAddress ? (
-                  <a
-                    href={`https://robinhoodchain.blockscout.com/token/${liveTokenAddress}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-lime-400 hover:text-lime-300 font-mono text-[10px] underline underline-offset-2 transition-colors"
-                    title="View on Robinhood Blockscout Explorer"
-                  >
-                    {liveTokenAddress.slice(0, 6)}...{liveTokenAddress.slice(-4)}
-                  </a>
-                ) : (
-                  <span className="text-zinc-400 font-mono text-[10px]">launching soon</span>
-                )}
-                <button onClick={handleCopyCA} className="hover:text-zinc-200 transition-colors ml-0.5 p-1" title="Copy Contract Address">
-                  {copiedCA ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
-                </button>
-              </div>
-
-              <div className="w-px h-3.5 bg-white/10" />
-
               <a
                 href="https://x.com/hoardedfun"
                 target="_blank"
@@ -5027,17 +5654,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
                 𝕏
               </a>
 
-              <a
-                href="https://t.me/hoardedfun"
-                target="_blank"
-                rel="noreferrer"
-                className="text-zinc-400 hover:text-[#229ED9] transition-colors flex items-center gap-1 p-1"
-                title="Telegram (@hoardedfun)"
-              >
-                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.943z"/>
-                </svg>
-              </a>
+              <div className="w-px h-3.5 bg-white/10" />
 
               <button
                 onClick={toggleAudio}

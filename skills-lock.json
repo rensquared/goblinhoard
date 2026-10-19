@@ -91,6 +91,12 @@
       "skillPath": ".claude/skills/slides/SKILL.md",
       "computedHash": "a2b3559b58afc484548e1eb359e20495d11cf12b90da7c1fbba50efed9a70340"
     },
+    "solana-dev": {
+      "source": "solana-foundation/solana-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/solana-dev/SKILL.md",
+      "computedHash": "975442b4f794e3db355f00b099fd0e274a3c016dcf1a7758a86b8c3e4cd44316"
+    },
     "swap-integration": {
       "source": "Uniswap/uniswap-ai",
       "sourceType": "github",

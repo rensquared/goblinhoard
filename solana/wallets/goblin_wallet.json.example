@@ -1,0 +1,6 @@
+{
+  "publicKey": "9umf2n1DPJb9ZE4zvrqE6xGZwszHhMHxg4k4RHUkCgob",
+  "privateKey": "YOUR_BASE58_PRIVATE_KEY_HERE",
+  "description": "Vanity Goblin Warband Wallet (0.2% Fee Recipient & Auto-Buyer until Raydium migration)",
+  "suffix": "gob"
+}
