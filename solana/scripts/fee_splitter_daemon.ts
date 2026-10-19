@@ -33,7 +33,7 @@ interface SplitterConfig {
 
 const DEFAULT_CONFIG: SplitterConfig = {
   walletA: process.env.FEE_WALLET_A || "9umf2n1DPJb9ZE4zvrqE6xGZwszHhMHxg4k4RHUkCgob", // Vanity Goblin Warband Wallet (...gob)
-  walletB: process.env.FEE_WALLET_B || "FEEb111111111111111111111111111111111111111", // Team / Altar Treasury Wallet
+  walletB: process.env.FEE_WALLET_B || process.env.TREASURY_WALLET || "", // Team / Payout Wallet (Optional - defaults to creator wallet)
   minThresholdSol: 0.005,
   keepSolForGas: 0.001
 };
@@ -113,17 +113,15 @@ async function runFeeSplitter() {
 
       // Verify recipient addresses
       let pubkeyA: PublicKey;
-      let pubkeyB: PublicKey;
       try {
         pubkeyA = new PublicKey(DEFAULT_CONFIG.walletA);
-        pubkeyB = new PublicKey(DEFAULT_CONFIG.walletB);
       } catch (err: any) {
-        console.error("❌ Invalid target wallet public key:", err.message);
+        console.error("❌ Invalid target wallet A public key:", err.message);
         isSplitting = false;
         return;
       }
 
-      // Build atomic transaction with compute priority + dual transfers
+      // Build atomic transaction with compute priority
       const tx = new Transaction();
       tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50_000 }));
       tx.add(
@@ -133,13 +131,31 @@ async function runFeeSplitter() {
           lamports: lamportsA
         })
       );
-      tx.add(
-        SystemProgram.transfer({
-          fromPubkey: creatorPubkey,
-          toPubkey: pubkeyB,
-          lamports: lamportsB
-        })
+
+      const hasExternalWalletB = Boolean(
+        DEFAULT_CONFIG.walletB &&
+        DEFAULT_CONFIG.walletB !== creatorPubkey.toBase58() &&
+        !DEFAULT_CONFIG.walletB.includes("FEEb111") &&
+        !DEFAULT_CONFIG.walletB.includes("Treasury111")
       );
+
+      if (hasExternalWalletB) {
+        try {
+          const pubkeyB = new PublicKey(DEFAULT_CONFIG.walletB);
+          tx.add(
+            SystemProgram.transfer({
+              fromPubkey: creatorPubkey,
+              toPubkey: pubkeyB,
+              lamports: lamportsB
+            })
+          );
+          console.log(`   ➡️ 80% forwarded to: ${DEFAULT_CONFIG.walletB}`);
+        } catch (err: any) {
+          console.warn(`   ⚠️ Invalid wallet B address (${DEFAULT_CONFIG.walletB}), retaining 80% in creator wallet.`);
+        }
+      } else {
+        console.log(`   💎 80% retained in Creator Wallet: ${(lamportsB / LAMPORTS_PER_SOL).toFixed(5)} SOL (Your Cut)`);
+      }
 
       const sig = await sendAndConfirmTransaction(connection, tx, [creatorKeypair], {
         commitment: "confirmed"

@@ -37,8 +37,8 @@ interface ProductionConfig {
 const CONFIG: ProductionConfig = {
   creatorPrivateKey: process.env.CREATOR_PRIVATE_KEY,
   goblinPrivateKey: process.env.GOB_PRIVATE_KEY,
-  treasuryWallet: process.env.TREASURY_WALLET || "HoardAltarTreasury111111111111111111111111",
-  tokenMint: process.env.TOKEN_MINT || "9JeFE6apEvFotefu1ocjWgSceEc3LG1LhgMxQNB4pump",
+  treasuryWallet: process.env.TREASURY_WALLET || "",
+  tokenMint: process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS || "",
   minSplitThresholdSol: 0.005,
   goblinBuyThresholdSol: 0.005,
   gasReserveSol: 0.001
@@ -91,14 +91,20 @@ async function main() {
     console.log("⚠️ No GOB_PRIVATE_KEY configured. Running with demo goblin keypair.");
   }
 
-  const mintPubkey = new PublicKey(CONFIG.tokenMint);
-  const [curvePDA] = PumpFunService.getBondingCurvePDA(mintPubkey);
+  let mintPubkey: PublicKey | null = null;
+  let curvePDA: PublicKey | null = null;
+  if (CONFIG.tokenMint && CONFIG.tokenMint.length >= 32) {
+    try {
+      mintPubkey = new PublicKey(CONFIG.tokenMint);
+      [curvePDA] = PumpFunService.getBondingCurvePDA(mintPubkey);
+    } catch {}
+  }
 
   console.log(`🏦 Creator Keypair:       ${creatorKeypair.publicKey.toBase58()}`);
   console.log(`👺 Vanity Goblin Wallet:  ${goblinKeypair.publicKey.toBase58()} (...gob)`);
-  console.log(`🏛️ Treasury Wallet:       ${CONFIG.treasuryWallet}`);
-  console.log(`🪙 Target Token Mint:     ${mintPubkey.toBase58()}`);
-  console.log(`📈 Bonding Curve PDA:     ${curvePDA.toBase58()}`);
+  console.log(`🏛️ Payout Treasury:       ${CONFIG.treasuryWallet || `${creatorKeypair.publicKey.toBase58()} (Retained in Creator Wallet)`}`);
+  console.log(`🪙 Target Token Mint:     ${mintPubkey ? mintPubkey.toBase58() : "Awaiting Deploy (Set TOKEN_MINT)"}`);
+  console.log(`📈 Bonding Curve PDA:     ${curvePDA ? curvePDA.toBase58() : "Awaiting Deploy"}`);
   console.log(`⚡ Split Threshold:       ${CONFIG.minSplitThresholdSol} SOL`);
   console.log(`⚡ Goblin Buy Threshold:  ${CONFIG.goblinBuyThresholdSol} SOL`);
   console.log("------------------------------------------------------------------\n");
@@ -121,7 +127,6 @@ async function main() {
 
         console.log(`\n💰 [Fee Splitter] New Creator Fees Detected: ${balanceSol.toFixed(4)} SOL`);
         console.log(`   ➡️ 20% (0.2% net) to Goblin Wallet: ${goblinShareSol} SOL`);
-        console.log(`   ➡️ 80% (0.8% net) to Treasury:      ${treasuryShareSol} SOL`);
 
         const goblinLamports = Math.floor(goblinShareSol * LAMPORTS_PER_SOL);
         const treasuryLamports = Math.floor(treasuryShareSol * LAMPORTS_PER_SOL);
@@ -132,13 +137,29 @@ async function main() {
             fromPubkey: creatorKeypair.publicKey,
             toPubkey: goblinKeypair.publicKey,
             lamports: goblinLamports
-          }),
-          SystemProgram.transfer({
-            fromPubkey: creatorKeypair.publicKey,
-            toPubkey: new PublicKey(CONFIG.treasuryWallet),
-            lamports: treasuryLamports
           })
         );
+
+        // If user configured an external payout treasury wallet, forward the 80% there.
+        // Otherwise, 80% stays directly inside the creator wallet (user's wallet)!
+        const hasExternalTreasury = Boolean(
+          CONFIG.treasuryWallet &&
+          CONFIG.treasuryWallet !== creatorKeypair.publicKey.toBase58() &&
+          !CONFIG.treasuryWallet.includes("Treasury11111111")
+        );
+
+        if (hasExternalTreasury) {
+          tx.add(
+            SystemProgram.transfer({
+              fromPubkey: creatorKeypair.publicKey,
+              toPubkey: new PublicKey(CONFIG.treasuryWallet),
+              lamports: treasuryLamports
+            })
+          );
+          console.log(`   ➡️ 80% (0.8% net) forwarded to Treasury: ${treasuryShareSol} SOL -> ${CONFIG.treasuryWallet}`);
+        } else {
+          console.log(`   💎 80% (0.8% net) retained in Creator Wallet: ${treasuryShareSol} SOL (Your Cut)`);
+        }
 
         const sig = await sendAndConfirmTransaction(connection, tx, [creatorKeypair], {
           commitment: "confirmed"
@@ -155,6 +176,7 @@ async function main() {
   // WORKER 2: Goblin Warband Auto-Buyer
   const checkAndExecuteGoblinBuys = async () => {
     if (isBuyerRunning) return;
+    if (!mintPubkey || !curvePDA) return;
     isBuyerRunning = true;
     try {
       // Check curve migration state first
