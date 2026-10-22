@@ -8,6 +8,7 @@
     "solana:test:dryrun": "ts-node solana/scripts/test_pipeline_dryrun.ts",
     "solana:daemon": "ts-node solana/scripts/run_production_daemon.ts",
     "solana:splitter": "ts-node solana/scripts/fee_splitter_daemon.ts",
+    "solana:claim": "ts-node solana/scripts/claim_creator_fees.ts",
     "solana:autobuyer": "ts-node solana/scripts/goblin_auto_buyer.ts"
   },
   "keywords": [],
@@ -22,6 +23,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@pump-fun/pump-sdk": "^4.3.1",
     "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.99.0",
     "@types/node-fetch": "^2.6.13",
