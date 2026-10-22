@@ -183,11 +183,12 @@ async function main() {
       const curveInfo = await connection.getAccountInfo(curvePDA);
       let realSolInCurve = 0;
       let isComplete = false;
+      let curveState: any = null;
 
-      if (curveInfo && curveInfo.data.length >= 41) {
-        const decoded = PumpFunService.decodeBondingCurve(curveInfo.data);
-        realSolInCurve = Number(decoded.realSolReserves) / LAMPORTS_PER_SOL;
-        isComplete = decoded.complete;
+      if (curveInfo && curveInfo.data.length >= 49) {
+        curveState = PumpFunService.parseBondingCurveState(curveInfo.data);
+        realSolInCurve = Number(curveState.realSolReserves) / LAMPORTS_PER_SOL;
+        isComplete = curveState.complete;
       }
 
       if (isComplete || realSolInCurve >= 85.0) {
@@ -204,15 +205,19 @@ async function main() {
         console.log(`\n👺 [Goblin Auto-Buyer] Balance reached threshold: ${goblinBalanceSol.toFixed(4)} SOL`);
         console.log(`   ⚔️ Executing Pump.fun Buy Swap for ${buyAmountSol} SOL on curve...`);
 
+        const buyLamports = BigInt(Math.floor(buyAmountSol * LAMPORTS_PER_SOL));
+        const tokenAmount = curveState
+          ? PumpFunService.calculateTokensOut(buyLamports, curveState.virtualSolReserves, curveState.virtualTokenReserves)
+          : BigInt(1_000_000);
+
         // Pump.fun buy swap instruction
         const buyTx = new Transaction().add(
           ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 }),
           PumpFunService.createBuyInstruction({
             buyer: goblinKeypair.publicKey,
             mint: mintPubkey,
-            solAmountLamports: BigInt(Math.floor(buyAmountSol * LAMPORTS_PER_SOL)),
-            maxSolCostLamports: BigInt(Math.floor(buyAmountSol * 1.05 * LAMPORTS_PER_SOL)), // 5% slippage
-            curvePDA
+            tokenAmount,
+            maxSolLamports: BigInt(Math.floor(buyAmountSol * 1.10 * LAMPORTS_PER_SOL)) // 10% max slippage
           })
         );
 
