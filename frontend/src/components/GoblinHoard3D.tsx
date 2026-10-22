@@ -231,7 +231,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
   const [liveTokenAddress, setLiveTokenAddress] = useState<string>(
     process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS ||
     process.env.NEXT_PUBLIC_TOKEN_ADDRESS ||
-    ""
+    "HEdn1fnjwtZXuUKJQrFn2ofHsWANofSnoUhFUTBkpump"
   );
   const [liveCreatorAddress, setLiveCreatorAddress] = useState<string>(
     process.env.NEXT_PUBLIC_SOLANA_CREATOR_ADDRESS ||
@@ -239,11 +239,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     "2CNfM41sdA4AbnPPAck8KKpz7RQSSZZzKs3B3CqCrmhG"
   );
   const [isOnchainConnected, setIsOnchainConnected] = useState<boolean>(true);
-  const [onchainStatusText, setOnchainStatusText] = useState<string>(
-    (process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS || process.env.NEXT_PUBLIC_TOKEN_ADDRESS)
-      ? "Connecting to Blockchain..."
-      : "Awaiting Token Launch on Pump.fun"
-  );
+  const [onchainStatusText, setOnchainStatusText] = useState<string>("Connecting to Blockchain...");
   const lastCurveBalanceRef = useRef<number>(0);
   const lastFeeBalanceRef = useRef<number>(0);
   const prevTokenInputRef = useRef<string>("");

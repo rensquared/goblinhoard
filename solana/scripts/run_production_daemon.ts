@@ -38,7 +38,7 @@ const CONFIG: ProductionConfig = {
   creatorPrivateKey: process.env.CREATOR_PRIVATE_KEY,
   goblinPrivateKey: process.env.GOB_PRIVATE_KEY,
   treasuryWallet: process.env.TREASURY_WALLET || "",
-  tokenMint: process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS || "",
+  tokenMint: process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_SOLANA_MINT_ADDRESS || "HEdn1fnjwtZXuUKJQrFn2ofHsWANofSnoUhFUTBkpump",
   minSplitThresholdSol: 0.005,
   goblinBuyThresholdSol: 0.005,
   gasReserveSol: 0.001
