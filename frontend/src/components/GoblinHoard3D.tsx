@@ -923,12 +923,48 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
             prevTokenInputRef.current = tokenInput;
           }
           try {
-            const res = await fetch("/api/solana-pair", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ address: tokenInput })
-            });
-            const data = await res.json();
+            // Direct ultra-fast DexScreener client fetch (<100ms) with fallback to local proxy
+            let data: any = null;
+            try {
+              const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenInput}`, {
+                cache: "no-store"
+              });
+              if (dexRes.ok) {
+                const dexJson = await dexRes.json();
+                const pair = dexJson?.pairs?.[0];
+                if (pair) {
+                  const mcap = Math.round(Number(pair.marketCap || pair.fdv || 0));
+                  const volume = Math.round(Number(pair.volume?.h24 || 0));
+                  const progress = Math.min(100, Math.max(0, ((mcap - 5000) / (69000 - 5000)) * 100));
+                  const approxSol = Number(((progress / 100) * 85.0).toFixed(2));
+                  const isComplete = mcap >= 69000 || progress >= 100;
+                  const dexName = pair.dexId?.toUpperCase() || "Pump.fun";
+
+                  data = {
+                    success: true,
+                    source: "dexscreener",
+                    isComplete,
+                    dexName,
+                    realSol: approxSol,
+                    virtualSol: 85.0,
+                    progressPct: Number(progress.toFixed(1)),
+                    marketCapUsd: mcap,
+                    volume24h: volume,
+                    tokenSymbol: pair.baseToken?.symbol || "HOARD",
+                    statusText: isComplete
+                      ? `Graduated to Raydium 🚀 ($${(mcap / 1000).toFixed(1)}K MC)`
+                      : `Live on Pump.fun ($${(mcap / 1000).toFixed(1)}K MC · ${approxSol} SOL in curve)`
+                  };
+                }
+              }
+            } catch {}
+
+            if (!data) {
+              const res = await fetch(`/api/solana-pair?address=${encodeURIComponent(tokenInput)}`, {
+                cache: "no-store"
+              });
+              data = await res.json();
+            }
 
             if (data?.success && isMounted) {
               const curveSol = Number(data.realSol || 0);
@@ -1143,7 +1179,7 @@ export default function GoblinCamp3D({ onLoaded }: { onLoaded?: () => void }) {
     };
 
     fetchOnchainData();
-    const pollTime = !liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? 1200 : 3500;
+    const pollTime = !liveTokenAddress.startsWith("0x") && liveTokenAddress.length >= 32 ? 800 : 3500;
     const interval = setInterval(fetchOnchainData, pollTime);
     return () => {
       isMounted = false;

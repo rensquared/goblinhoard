@@ -173,8 +173,14 @@ async function main() {
     }
   };
 
+  // Safety toggle: Goblin auto-buys PAUSED by user request until explicitly enabled
+  const PAUSE_GOBLIN_BUYS = process.env.ENABLE_GOBLIN_BUYS !== "true";
+
   // WORKER 2: Goblin Warband Auto-Buyer
   const checkAndExecuteGoblinBuys = async () => {
+    if (PAUSE_GOBLIN_BUYS) {
+      return; // Standing down - goblins paused
+    }
     if (isBuyerRunning) return;
     if (!mintPubkey || !curvePDA) return;
     isBuyerRunning = true;
